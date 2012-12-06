@@ -1,0 +1,72 @@
+#!/bin/sh
+
+self="$(basename "$0")"
+
+has(){
+  which "$@" >/dev/null 2>/dev/null
+}
+
+warn(){
+  echo "$@" >&2
+}
+
+do_fail_if_not_found=true
+
+while [ -n "$1" ]; do
+  case $1 in
+    -o|--or|--either)
+      do_fail_if_not_found=false
+      shift
+      ;;
+    -a|--and|--all)
+      do_fail_if_not_found=true
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+has_at_least_one=false
+
+pkgs=
+for f in "$@"; do
+  if [ -e "$f" ]; then
+    has_at_least_one=true
+  else
+    if has pkcon; then
+      pkg="$(pkcon what-provides -p -y "$f" | grep '^Available' | awk '{ print $2 }' | cut -d- -f1 | sort | uniq)"
+      if [ -n "$pkg" ]; then
+        pkgs="$pkgs $pkg"
+      elif $do_fail_if_not_found; then
+        warn "$f: package not found"
+        exit 1
+      fi
+    else
+      warn "$self: Platform not supported, please install PackageKit (pkcon)"
+      exit 1
+    fi
+  fi
+done
+
+if [ -n "$(echo $pkgs)" ]; then
+  if has pkcon; then
+    echo "Installing: $pkgs"
+    # Go to empty directory so package name cannot be confused with files
+    mkdir /tmp/pkcon-empty
+    (
+      cd /tmp/pkcon-empty
+      pkcon install $pkgs
+    )
+    rmdir /tmp/pkcon-empty
+  fi
+elif ! $has_at_least_one; then
+  warn "No package found"
+  exit 1
+fi
+

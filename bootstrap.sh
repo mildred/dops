@@ -1,5 +1,7 @@
 #!/bin/sh
 
+DIR="$(cd "$(dirname "$0")"; pwd)"
+
 ver=20121206
 
 echo "Provisionning bootstrap v$ver"
@@ -16,6 +18,11 @@ fail(){
   warn "$@"
   exit 1
 }
+
+if [ -d "$DIR/bin" ]; then
+  echo "Adding to PATH: $DIR/bin"
+  export PATH="$PATH:$DIR/bin"
+fi
 
 if has aptitude; then
   pkgs="zeroinstall-injector packagekit policykit git-core"
@@ -66,14 +73,5 @@ $failed && exit 1
 echo "Bootstrapping done."
 echo "Available programs: $pkgs"
 
-if [ -z "$1" ]; then
-  fail "Failure: could not find provisionning scripts"
-elif [ -d "$1" ]; then
-  cd "$1"
-else
-  fail "Failure: could not find provisionning scripts in $1"
-fi
-
-redo provision
-
+exit 0
 
