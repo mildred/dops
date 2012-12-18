@@ -1,7 +1,14 @@
-#!/bin/sh
+#!/bin/echo This script must be sourced
+# Usage:
+#   self=path/to/bootstrap.sh
+#   . $self
+if [ -z "$1" ] && [ -z "$self" ]; then
+  echo "missing first argument or self variable (path to script itself)"
+  return 1
+fi
 
-DIR="$(cd "$(dirname "$0")"; pwd)"
-
+: ${self:=$1}
+DIR="$(cd "$(dirname "$self")"; pwd)"
 ver=20121206
 
 echo "Provisionning bootstrap v$ver"
@@ -14,18 +21,14 @@ warn(){
   echo "$@" >&2
 }
 
-fail(){
-  warn "$@"
-  exit 1
-}
-
 if [ -d "$DIR/bin" ]; then
   echo "Adding to PATH: $DIR/bin"
-  export PATH="$PATH:$DIR/bin"
+  echo 'PATH="$PATH:$DIR/bin"; export PATH' > /etc/profile.d/provision.sh
+  . /etc/profile.d/provision.sh
 fi
 
 if has aptitude; then
-  pkgs="zeroinstall-injector packagekit policykit git-core"
+  pkgs="zeroinstall-injector packagekit policykit-1 git-core"
   ok=true
   for pkg in $pkgs; do
     if ! dpkg -s "$pkg" >/dev/null 2>&1; then
@@ -68,10 +71,12 @@ for bin in $pkgs; do
   fi
 done
 
-$failed && exit 1
+unset self
+
+$failed && return 1
 
 echo "Bootstrapping done."
 echo "Available programs: $pkgs"
 
-exit 0
+return 0
 

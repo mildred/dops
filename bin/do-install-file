@@ -11,15 +11,26 @@ warn(){
 }
 
 do_fail_if_not_found=true
+pkg_list=
+has_at_least_one=false
 
 while [ -n "$1" ]; do
   case $1 in
+    --any)
+      has_at_least_one=true
+      shift
+      ;;
     -o|--or|--either)
       do_fail_if_not_found=false
       shift
       ;;
     -a|--and|--all)
       do_fail_if_not_found=true
+      shift
+      ;;
+    -p|--package)
+      shift
+      pkg_list="$pkg_list $1"
       shift
       ;;
     --)
@@ -32,15 +43,28 @@ while [ -n "$1" ]; do
   esac
 done
 
-has_at_least_one=false
 
 pkgs=
+for p in $pkg_list; do
+  if has pkcon; then
+    if pkcon -y get-details $p >/dev/null 2>&1; then
+      pkgs="$pkgs $p"
+    elif $do_fail_if_not_found; then
+      warn "$f: package not found"
+      exit 1
+    fi
+  else
+    warn "$self: Platform not supported, please install PackageKit (pkcon)"
+    exit 1
+  fi
+done
+
 for f in "$@"; do
   if [ -e "$f" ]; then
     has_at_least_one=true
   else
     if has pkcon; then
-      pkg="$(pkcon what-provides -p -y "$f" | grep '^Available' | awk '{ print $2 }' | cut -d- -f1 | sort | uniq)"
+      pkg="$(pkcon -y what-provides -p -y "$f" | grep '^Available' | awk '{ print $2 }' | cut -d- -f1 | sort | uniq)"
       if [ -n "$pkg" ]; then
         pkgs="$pkgs $pkg"
       elif $do_fail_if_not_found; then
@@ -61,7 +85,7 @@ if [ -n "$(echo $pkgs)" ]; then
     mkdir /tmp/pkcon-empty
     (
       cd /tmp/pkcon-empty
-      pkcon install $pkgs
+      pkcon -y install $pkgs
     )
     rmdir /tmp/pkcon-empty
   fi
