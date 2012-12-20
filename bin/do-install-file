@@ -50,7 +50,7 @@ for p in $pkg_list; do
     if pkcon -y get-details $p >/dev/null 2>&1; then
       pkgs="$pkgs $p"
     elif $do_fail_if_not_found; then
-      warn "$f: package not found"
+      warn "$p: package not found"
       exit 1
     fi
   else
