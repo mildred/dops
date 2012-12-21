@@ -1,4 +1,5 @@
 #!/bin/sh
+# Problem: pkcon sometimes ask to choose between alternatives i686 and x86_64
 
 self="$(basename "$0")"
 
@@ -46,8 +47,21 @@ done
 
 pkgs=
 for p in $pkg_list; do
-  if has pkcon; then
-    if pkcon -y get-details $p >/dev/null 2>&1; then
+  if has dpkg; then
+    if dpkg -s "$p" </dev/null >/dev/null 2>&1; then
+      has_at_least_one=true
+      continue
+    fi
+  fi
+  if has aptitude; then
+    if aptitude --no-gui -y show $p >/dev/null 2>&1 </dev/null; then
+      pkgs="$pkgs $p"
+    elif $do_fail_if_not_found; then
+      warn "$p: package not found"
+      exit 1
+    fi
+  elif has pkcon; then
+    if pkcon -y get-details $p >/dev/null 2>&1 </dev/null; then
       pkgs="$pkgs $p"
     elif $do_fail_if_not_found; then
       warn "$p: package not found"
@@ -64,7 +78,7 @@ for f in "$@"; do
     has_at_least_one=true
   else
     if has pkcon; then
-      pkg="$(pkcon -y what-provides -p -y "$f" | grep '^Available' | awk '{ print $2 }' | cut -d- -f1 | sort | uniq)"
+      pkg="$(pkcon -y what-provides -p -y "$f" </dev/null | grep '^Available' | awk '{ print $2 }' | cut -d- -f1 | sort | uniq)"
       if [ -n "$pkg" ]; then
         pkgs="$pkgs $pkg"
       elif $do_fail_if_not_found; then
@@ -79,13 +93,15 @@ for f in "$@"; do
 done
 
 if [ -n "$(echo $pkgs)" ]; then
-  if has pkcon; then
-    echo "Installing: $pkgs"
+  echo "Installing: $pkgs"
+  if has aptitude; then
+    aptitude --no-gui -y install $pkgs </dev/null
+  elif has pkcon; then
     # Go to empty directory so package name cannot be confused with files
     mkdir /tmp/pkcon-empty
     (
       cd /tmp/pkcon-empty
-      pkcon -y install $pkgs
+      pkcon -y install $pkgs </dev/null
     )
     rmdir /tmp/pkcon-empty
   fi
