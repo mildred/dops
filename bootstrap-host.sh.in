@@ -41,21 +41,17 @@ echo "Provisionning host bootstrap v$ver in $dir"
 
 $failed && return 1
 
-echo
-echo "Configure ssh"
-echo
+echo "==> Configure ssh"
 
 mkdir -p ~/.ssh
 touch ~/.ssh/config
-sed -e '/DOPS CONF/ { D; N; /./d }' ~/.ssh/config > ~/.ssh/config-dops
+sed -e '/DOPS CONF/ { N; /./d }' ~/.ssh/config > ~/.ssh/config-dops
 echo "# DOPS CONF:" >> ~/.ssh/config-dops
 echo "StrictHostKeyChecking no" >> ~/.ssh/config-dops
 diff -u ~/.ssh/config ~/.ssh/config-dops
 mv ~/.ssh/config-dops ~/.ssh/config
 
-echo
-echo "Create repository in $dir"
-echo
+echo "==> Create repository in $dir"
 
 if [ -e "$dir" ] && $force; then
   warn "$dir: removing (-f provided)"
@@ -78,8 +74,7 @@ cat >.git/hooks/post-update <<EOF
   set -x
   git reset --hard HEAD
   git submodule init
-  git submodule update --recursive
-  git submodule foreach --recursive git reset --hard
+  git submodule update --recursive --force
   redo provision
 EOF
 chmod +x .git/hooks/post-update

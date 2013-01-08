@@ -1,9 +1,9 @@
-#!/bin/sh
+#!/bin/bash
 # usage: bootstrap-ssh.sh remote user@host dir
 
 zero="$(basename "$0")"
 usage(){
-    echo "Usage: $zero [-f] [--] remote user@host dir" >&2
+    echo "Usage: $zero [-f] [--] remote [user@host dir]" >&2
     exit 1
 }
 
@@ -23,43 +23,57 @@ while true; do
   esac
 done
 
-if [ $# -lt 3 ]; then
+if [ $# != 1 ] && [ $# != 3 ]; then
     usage
 fi
 
 remote="$1"
-host="$2"
-dir="$3"
+shift
+
+if [ $# -ge 1 ]; then
+  host="$2"
+  dir="$3"
+  create_remote=true
+else
+  url="$(git config "remote.$remote.url")"
+  create_remote=false
+  host="${url%%:*}"
+  dir="${url#*:}"
+  dir="${dir%/.git}"
+fi
 
 DOPS_DIR="$(cd "$(dirname "$0")"; pwd)"
 
-set -x -e
+set -e
 
 git config alias.cipush "!$DOPS_DIR/git-commit-push.sh"
-if git remote | grep "$remote" >/dev/null; then
-  git remote rename "$remote" "$remote-$(date '+%Y%m%d-%H%M%S')"
+if $create_remote; then
+  if git remote | grep "$remote" >/dev/null; then
+    git remote rename "$remote" "$remote-$(date '+%Y%m%d-%H%M%S')"
+  fi
+  git remote add "$remote" "$host:$dir/.git"
 fi
-git remote add "$remote" "$host:$dir/.git"
 
-redo "$DOPS_DIR/bootstrap-host.sh"
-scp "$DOPS_DIR/bootstrap-host.sh" "$host:/tmp/bootstrap.sh"
-if ssh "$host" "sh /tmp/bootstrap.sh $REMOTE_OPTS '$dir'"; then
-    set +x +e
-    echo
+redo-ifchange "$DOPS_DIR/bootstrap-host.sh"
+if (set -x; ssh "$host" "sh -s $REMOTE_OPTS '$dir'" <"$DOPS_DIR/bootstrap-host.sh"); then
+    set +e
     echo
     echo "$host has been bootstrapped in $dir"
 else
-    set +x +e
-    echo
+    set +e
     echo
     echo "$host was probably already bootstrapped in $dir"
     echo "If you want to force the bootstrapping, re-run this script with -f"
 fi
 
-echo "Now, to provision, run:"
 echo
-echo "    git push $remote master   --  push the current ref for provisionning"
-echo "    git cipush $remote master --  commit and push (then revert commit)"
+echo "Now, to provision on the last commit, run:"
+echo
+echo "    git push -u $remote HEAD:master"
+echo
+echo "to create a temporary commit and push it, run:"
+echo
+echo "    git cipush -u $remote HEAD:master"
 echo
 
 exit 0
