@@ -1,7 +1,11 @@
 #!/bin/sh
 
 usage(){
-  echo "git cipush [-a|-h] [--] PUSH_OPTIONS"
+  echo "Usage: git cipush [-a|-h] [--] PUSH_OPTIONS"
+  echo "This command runs:"
+  echo "    git commit [-a]"
+  echo "    git push -f PUSH_OPTIONS"
+  echo "    git reset --soft to before the commit"
 }
 
 COMMIT_OPTIONS=
@@ -12,7 +16,7 @@ while true; do
       shift
       ;;
     -h)
-      usage
+      usage >&2
       exit 1
       ;;
     --)

@@ -1,0 +1,72 @@
+How to Create a Provisionning Repository?
+=========================================
+
+Create a git repository with dops as a git submodule. Then create a redo
+`provision.do` script that does the provisionning job.
+
+You are encouraged to eval the output of the `dops.sh` script in your
+`provision.do` script to set up the default environment variables:
+
+    eval "$(dops/dops.sh)"
+
+You can also include a number of other git submodules corresponding to the
+different things you want to provision, and call them from the master
+`provision.do` script.
+
+
+How to bootstrap a node?
+========================
+
+You need ssh access on the remote node. Then on the provisionning repository
+and assuming the dops submodule is located in `dops`, run:
+
+    dops/bootstrap-ssh.sh GIT_REMOTE [SSH_HOST REMOTE_DIR]
+
+`GIT_REMOTE` is the name of a git remote corresponding to the node to
+bootstrap. If the remote already exists, the next parameters will be fetched
+from the git configuration.
+
+If the remote doesn't already exists or you provided the three parameters, the
+script will create the remote and bootstrap the node `SSH_HOST`, creating a
+repository `REMOTE_DIR` on the remote host.
+
+This command will not provision the node, it will just bootstrap it to make it
+ready for provisionning. Not it is better to have a public key authentication.
+
+Example of command:
+
+    dops/bootstrap-ssh.sh staging root@staging.example.net /root/provisionning
+
+
+How to provision a node from my developpment machine?
+=====================================================
+
+Just push to the node, it should be registered as a git remote. The bootstrap
+should have created a hook that will provision the node when the repository is
+pushed to.
+
+The bootstrap should also have created a git alias `git cipush` that pushes a
+temporary commit that includes the staging area. It is useful to provision a
+work in progress without creating a commit. See `git cipush -h`
+
+
+How to provision from the remote node?
+======================================
+
+Go to the provisionning repository (`REMOTE_DIR`), optionally pull any changes
+and run:
+
+    redo provision
+
+
+What environment variables can I use in my provisionning scripts?
+=================================================================
+
+- `DOPS_CONF`: location of the configuration directory for your provisionning.
+
+
+What tools/executables can I use in my provisionning scripts?
+=============================================================
+
+- `do-install-file` to install a package
+- `has` to tell if an executable is present
