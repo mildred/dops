@@ -35,8 +35,12 @@ else
 fi
 
 if ! has redo; then
-  git clone -b simple "$redo_url" /opt/redo
-  ln -s /opt/redo/redo /usr/bin/redo
+  rm -rf /opt/redo
+  git clone "$redo_url" /opt/redo
+  (
+    cd /opt/redo
+    ./redo install
+  )
 fi
 
 failed=false

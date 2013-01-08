@@ -1,0 +1,106 @@
+#!/bin/bash
+
+#if [ "$DOPS_SHELL" = "stage1" ]; then
+#  unset DOPS_SHELL
+#else
+#  export DOPS_SHELL=stage1
+#  export DOPS_DIR="$(cd "$(dirname "$0")"; echo $PWD)"
+#  redo-ifchange "$DOPS_DIR/redo-sh"
+#  exec "$DOPS_DIR/redo-sh" "$0" "$@"
+#fi
+
+: ${DOPS_DIR:="$(cd "$(dirname "$0")"; echo $PWD)"}
+: ${DOPS_ROOT:="$(cd "$(dirname "$0")/.."; echo $PWD)"}
+: ${DOPS_CONF:="$DOPS_ROOT/conf)"}
+
+if [ -z "$DOPS_BIN_DIR" ]; then
+  export DOPS_BIN_DIR="$DOPS_DIR/bin"
+  export PATH="$DOPS_BIN_DIR:$PATH"
+fi
+
+has(){
+  which "$@" >/dev/null 2>&1
+}
+
+contains(){
+  grep "$@" >/dev/null 2>&1
+}
+
+econtains(){
+  egrep "$@" >/dev/null 2>&1
+}
+
+fcontains(){
+  fgrep "$@" >/dev/null 2>&1
+}
+
+shquote(){
+	local HEAD TAIL="$*"
+	printf "'"
+
+	while [ -n "$TAIL" ]; do
+		HEAD="${TAIL%%\'*}"
+
+		if [ "$HEAD" = "$TAIL" ]; then
+			printf "%s" "$TAIL"
+			break
+		fi
+
+		printf "%s'\"'\"'" "$HEAD"
+
+		TAIL="${TAIL#*\'}"
+	done
+
+	printf "'"
+}
+
+redo-cat(){
+  redo-ifchange "$@"
+  cat "$@"
+}
+
+redo-catx(){
+  ( set +e
+    redo-ifchange "$@"
+    cat "$@"
+  )
+  return 0
+}
+
+redo-source(){
+  redo-ifchange "$@"
+  while [ $# -gt 0 ]; do
+		. "$1"
+		shift
+	done
+}
+
+redo-source-cat(){
+  redo-ifchange "$@"
+  while [ $# -gt 0 ]; do
+		. "$1"
+		cat "$1"
+		shift
+	done
+}
+
+do-record(){
+  printf "%s\n" "$1=$(shquote "${3:-"$2"}")"
+}
+
+do-recordf(){
+  do-record "$1" "$2" "$(redo-catx "$3")"
+}
+
+do-recordc(){
+  do-recordf "$1" "$2" "$DOPS_CONF/$(basename "$PWD")/$1"
+}
+
+do_file="$1"
+shift
+
+[ -n "$REDO_XTRACE" ] && set -x
+[ -n "$REDO_VERBOSE" ] && set -v
+set -e
+source "$do_file"
+

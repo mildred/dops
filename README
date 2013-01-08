@@ -1,13 +1,12 @@
 How to Create a Provisionning Repository?
 =========================================
 
-Create a git repository with dops as a git submodule. Then create a redo
-`provision.do` script that does the provisionning job.
+- Create a git repository with dops as a git submodule.
+- link the dops shell in: `ln -s dops/dopsh .`
+- reate a redo `provision.do` script that does the provisionning job
 
-You are encouraged to eval the output of the `dops.sh` script in your
-`provision.do` script to set up the default environment variables:
-
-    eval "$(dops/dops.sh)"
+Your redo scripts are encouraged to start with `#!.../dopsh` to enable the dops
+shell, that shell contain many useful [documented features](README.DOPSH)
 
 You can also include a number of other git submodules corresponding to the
 different things you want to provision, and call them from the master
@@ -59,14 +58,59 @@ and run:
     redo provision
 
 
-What environment variables can I use in my provisionning scripts?
-=================================================================
+What environment variables can I use with the dopsh shell?
+==========================================================
 
-- `DOPS_CONF`: location of the configuration directory for your provisionning.
+  - `DOPS_DIR`:
+    Location of the dops directory
+
+  - `DOPS_ROOT`:
+    Location of the provisionning repository (`DOPS_DIR/..`)
+
+  - `DOPS_CONF`:
+    Location of the configuration directory for your provisionning
+    (`DOPS_ROOT/conf`)
 
 
-What tools/executables can I use in my provisionning scripts?
-=============================================================
+What is dopsh?
+==============
 
-- `do-install-file` to install a package
-- `has` to tell if an executable is present
+`dopsh` is a bash shell (so you don't have to care about compatibility between
+different shells) that have special variables and functions that are very
+useful.
+
+
+What functions and executables come with the dopsh shell?
+=========================================================
+
+  - `has`:
+    `which` with no output
+
+  - `[ef]contains`:
+    `[ef]grep` with no output
+
+  - `shquote`:
+    quote its argument so it can be read safely from the shell
+
+  - `redo-cat[x]`:
+    `redo` a file and `cat` it afterwards, `catx` if you don't care about the file existance
+
+  - `redo-source`:
+    `redo` a file and source it afterwards
+
+  - `redo-source-cat`:
+    `redo` a file, source it and `cat` it afterwards
+
+  - `do-record VAR DEFVAL VAL`
+
+  - `do-recordf VAR DEFVAL FILE`
+
+  - `do-recordc VAR DEFVAL`
+
+
+What tools do I have for provisionning?
+=======================================
+
+  - `do-install-file`:
+    Install a package
+
