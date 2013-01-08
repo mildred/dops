@@ -1,0 +1,93 @@
+#!/bin/sh
+# usage: bootstrap-ssh.sh dir
+
+zero="$(basename "$0")"
+usage(){
+    echo "Usage: $zero [-f] [--] dir" >&2
+    exit 1
+}
+
+force=false
+while true; do
+  case $1 in
+    -f)
+      force=true
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      break;
+  esac
+done
+
+if [ $# -lt 1 ]; then
+    usage
+fi
+
+dir="$1"
+ver=20130108
+
+pkgs_deb="git-core"
+pkgs_rpm="git"
+redo_url="https://github.com/mildred/redo.git"
+expect_bin="git redo"
+
+echo "Provisionning host bootstrap v$ver in $dir"
+
+%%BOOTSTRAP_PKGS%%
+
+$failed && return 1
+
+echo
+echo "Configure ssh"
+echo
+
+mkdir -p ~/.ssh
+touch ~/.ssh/config
+sed -e '/DOPS CONF/ { D; N; /./d }' ~/.ssh/config > ~/.ssh/config-dops
+echo "# DOPS CONF:" >> ~/.ssh/config-dops
+echo "StrictHostKeyChecking no" >> ~/.ssh/config-dops
+diff -u ~/.ssh/config ~/.ssh/config-dops
+mv ~/.ssh/config-dops ~/.ssh/config
+
+echo
+echo "Create repository in $dir"
+echo
+
+if [ -e "$dir" ] && $force; then
+  warn "$dir: removing (-f provided)"
+  rm -rf "$dir"
+fi
+
+if [ -e "$dir" ]; then
+  warn "$dir: already exists"
+  exit 1
+fi
+
+mkdir -p "$dir"
+cd "$dir"
+git init
+cat >.git/hooks/post-update <<EOF
+  unset GIT_DIR
+  export LC_ALL=C
+  cd ..
+  echo "Provisionning in $PWD:"
+  set -x
+  git reset --hard HEAD
+  git submodule init
+  git submodule update --recursive
+  git submodule foreach --recursive git reset --hard
+  redo provision
+EOF
+chmod +x .git/hooks/post-update
+git config receive.denyCurrentBranch false
+git config receive.denyNonFastForwards false
+
+echo "Bootstrapping done."
+
+exit 0
+# kate: hl sh;
+

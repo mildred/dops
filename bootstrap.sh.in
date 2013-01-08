@@ -1,0 +1,37 @@
+#!/bin/echo This script must be sourced
+# Usage:
+#   self=path/to/bootstrap.sh
+#   . $self
+if [ -z "$1" ] && [ -z "$self" ]; then
+  echo "missing first argument or self variable (path to script itself)"
+  return 1
+fi
+
+: ${self:=$1}
+DIR="$(cd "$(dirname "$self")"; pwd)"
+ver=20121206
+pkgs_deb="zeroinstall-injector packagekit policykit-1 git-core"
+pkgs_rpm="zeroinstall-injector PackageKit git"
+redo_url="https://github.com/mildred/redo.git"
+expect_bin="pkcon 0launch redo git"
+
+echo "Provisionning bootstrap v$ver"
+
+%%BOOTSTRAP_PKGS%%
+
+$failed && return 1
+
+if [ -d "$DIR/bin" ]; then
+  echo "Adding to PATH: $DIR/bin"
+  echo 'PATH="$PATH:$DIR/bin"; export PATH' > /etc/profile.d/provision.sh
+  . /etc/profile.d/provision.sh
+fi
+
+unset self
+
+echo "Bootstrapping done."
+echo "Available programs: $expect_bin"
+
+return 0
+# kate: hl sh;
+
