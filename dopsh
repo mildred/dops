@@ -85,7 +85,9 @@ redo-source-cat(){
 }
 
 do-record(){
-  printf "%s\n" "$1=$(shquote "${3:-"$2"}")"
+  local val="${3:-"$2"}"
+  eval $1='$val'
+  printf "%s\n" "$1=$(shquote "$val")"
 }
 
 do-recordf(){
