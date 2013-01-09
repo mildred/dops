@@ -107,6 +107,8 @@ do-recordc(){
 do_file="$1"
 shift
 
+exec 4>&1 >&3 3>&4 4>&-
+
 [ -n "$REDO_XTRACE" ] && set -x
 [ -n "$REDO_VERBOSE" ] && set -v
 set -e

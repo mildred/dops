@@ -1,0 +1,113 @@
+#!/bin/sh
+
+zero="$(basename "$0")"
+usage(){
+  cat <<EOF
+$zero declare-user [--shell SHELL] [--home HOMEDIR] USER
+EOF
+}
+
+warn(){
+  printf "$@" >&2
+}
+
+has(){
+  which "$@" >/dev/null 2>&1
+}
+
+operation=help
+user=
+shell=
+home=
+login_group=
+
+while true; do
+  case "$1" in
+    -h|--help|help)
+      usage >&2
+      exit 1
+      ;;
+    declare-user)
+      operation=declare-user
+      shift
+      ;;
+    --shell)
+      shell="$2"
+      shift 2
+      ;;
+    --home)
+      home="$2"
+      shift 2
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      case $operation in
+        declare-user)
+          user="$1"
+          ;;
+        *)
+          warn "Unknown parameter %s\n" "$1"
+          ;;
+      esac
+      shift
+      ;;
+  esac
+done
+
+has_user(){
+  cut -d: -f1 /etc/passwd | fgrep -x "$1" >/dev/null
+}
+
+has_group(){
+  cut -d: -f1 /etc/group | fgrep -x "$1" >/dev/null
+}
+
+case $operation in
+  declare-user)
+    if [ -z "$user" ]; then
+      warn "Missing username"
+      exit 1
+    fi
+    : ${login_group:="$user"}
+    if has_user "$user"; then
+      if has useradd; then
+        op="--create-home -g '$login_group'"
+        [ -n "$home"  ] && op+=" --home '$home'"
+        [ -n "$shell" ] && op+=" --shell '$shell'"
+        useradd $op "$user"
+      else
+        warn "Cannot create user: Unknown platform"
+        exit 1
+      fi
+    else
+      if has usermod; then
+        if !has_group "$login_group"; then
+          if has groupadd; then
+            groupadd "$login_group"
+          else
+            warn "Cannot create group: Unknown platform"
+            exit 1
+          fi
+        fi
+        op="--move-home -g '$login_group'"
+        [ -n "$home"  ] && op+=" --home '$home'"
+        [ -n "$shell" ] && op+=" --shell '$shell'"
+        usermod $op "$user"
+      else
+        warn "Cannot update user: Unknown platform"
+        exit 1
+      fi
+    fi
+    if [ -n "$home" ] && ! [ -e "$home" ]; then
+      install -o "$user" -g "$login_group" -m 0711 -d "$home"
+    fi
+    ;;
+  *)
+    usage >&2
+    exit 1
+    ;;
+esac
+
