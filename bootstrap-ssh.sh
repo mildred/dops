@@ -3,15 +3,20 @@
 
 zero="$(basename "$0")"
 usage(){
-    echo "Usage: $zero [-f] [--] remote [user@host dir]" >&2
+    echo "Usage: $zero [-f] [-n NODE_ID] [--] REMOTE [USER@HOST DIR]" >&2
     exit 1
 }
 
 REMOTE_OPTS=
+node_id=
 while true; do
   case $1 in
     -f)
       REMOTE_OPTS+=" -f"
+      shift
+      ;;
+    -n)
+      node_id="$2"
       shift
       ;;
     --)
@@ -29,6 +34,8 @@ fi
 
 remote="$1"
 shift
+
+: ${node_id:="$remote"}
 
 if [ $# -ge 1 ]; then
   host="$2"
@@ -59,7 +66,7 @@ if $create_remote; then
 fi
 
 redo-ifchange "$DOPS_DIR/bootstrap-host.sh"
-if (set -x; ssh "$host" "sh -s -- $REMOTE_OPTS '$dir' '$current_branch'" <"$DOPS_DIR/bootstrap-host.sh"); then
+if (set -x; ssh "$host" "sh -s -- $REMOTE_OPTS '$node_id' '$dir' '$current_branch'" <"$DOPS_DIR/bootstrap-host.sh"); then
     set +e
     echo
     echo "$host has been bootstrapped in $dir"

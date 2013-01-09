@@ -3,7 +3,7 @@
 
 zero="$(basename "$0")"
 usage(){
-    echo "Usage: $zero [-f] [--] dir" >&2
+    echo "Usage: $zero [-f] [--] node_id dir" >&2
     exit 1
 }
 
@@ -27,8 +27,9 @@ if [ $# -lt 1 ]; then
     usage
 fi
 
-dir="$1"
-branch="$2"
+node_id="$1"
+dir="$2"
+branch="$3"
 ver=20130108
 
 pkgs_deb="git-core"
@@ -54,6 +55,19 @@ mv ~/.ssh/config-dops ~/.ssh/config
 
 echo "==> Create repository in $dir"
 
+if [ -e "$dir/.git" ]; then
+  ( cd "$dir"
+    current_node_id="$(git config dops.node_id)"
+    if [ "a$node_id" != "a$current_node_id" ] && [ -n "$current_node_id" ]; then
+      warn
+      warn "ERROR: You are bootstrapping the wrong node"
+      warn "ERROR: The node you are connected to is $current_node_id"
+      warn "ERROR: Use -f to override"
+      exit 42
+    fi
+  )
+fi
+
 if [ -e "$dir" ] && $force; then
   warn "$dir: removing (-f provided)"
   rm -rf "$dir"
@@ -66,6 +80,7 @@ fi
 
 mkdir -p "$dir"
 cd "$dir"
+git config dops.node_id "$node_id"
 umask 0066
 git init
 if [ -n "$branch" ] && [ master != "$branch" ]; then
