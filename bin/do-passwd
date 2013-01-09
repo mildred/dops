@@ -87,9 +87,9 @@ case $operation in
     : ${login_group:="$user"}
     if ! has_user "$user"; then
       if has useradd; then
-        op="--create-home -g '$login_group'"
-        [ -n "$home"  ] && op+=" --home '$home'"
-        [ -n "$shell" ] && op+=" --shell '$shell'"
+        op="--create-home -g $login_group"
+        [ -n "$home"  ] && op+=" --home $home"
+        [ -n "$shell" ] && op+=" --shell $shell"
         set -e
         declare_group "$login_group"
         ( set -x; useradd $op "$user" )
@@ -99,9 +99,9 @@ case $operation in
       fi
     else
       if has usermod; then
-        op="--move-home -g '$login_group'"
-        [ -n "$home"  ] && op+=" --home '$home'"
-        [ -n "$shell" ] && op+=" --shell '$shell'"
+        op="--move-home -g $login_group"
+        [ -n "$home"  ] && op+=" --home $home"
+        [ -n "$shell" ] && op+=" --shell $shell"
         set -e
         declare_group "$login_group"
         ( set -x; usermod $op "$user" )
