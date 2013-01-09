@@ -83,6 +83,12 @@ useful.
 What functions and executables come with the dopsh shell?
 =========================================================
 
+  - `warn [-n]`:
+    `printf` to stdout
+
+  - `fail [-n]`:
+    Terminate
+
   - `has`:
     `which` with no output
 

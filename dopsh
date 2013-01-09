@@ -20,6 +20,22 @@ if [ -z "$DOPS_BIN_DIR" ]; then
   export PATH="$DOPS_BIN_DIR:$PATH"
 fi
 
+warn(){
+  if [ "a$1" = "a-n" ]; then
+    shift
+    printf "$@" >&2
+  else
+    local templ="$1"
+    shift
+    printf "$templ\n" "$@" >&2
+  fi
+}
+
+fail(){
+  warn "$@"
+  exit 1
+}
+
 has(){
   which "$@" >/dev/null 2>&1
 }
@@ -92,16 +108,19 @@ redo-source-cat(){
 	done
 }
 
+# do-record var default-val val
 do-record(){
   local val="${3:-"$2"}"
   eval $1='$val'
   printf "%s\n" "$1=$(shquote "$val")"
 }
 
+# do-recordf var default-val valfile
 do-recordf(){
   do-record "$1" "$2" "$(redo-catx "$3")"
 }
 
+# do-recordc var default-val
 do-recordc(){
   do-recordf "$1" "$2" "$DOPS_CONF/$(basename "$PWD")/$1"
 }
