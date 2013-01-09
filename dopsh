@@ -62,7 +62,7 @@ redo-cat(){
 redo-catx(){
   ( set +e
     redo-ifchange "$@"
-    cat "$@"
+    cat "$@" 2>/dev/null
   )
   return 0
 }
