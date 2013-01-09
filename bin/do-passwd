@@ -69,7 +69,7 @@ declare_group(){
   local group="$1"
   if ! has_group "$group"; then
     if has groupadd; then
-      groupadd "$group"
+      ( set -x; groupadd "$group" )
       return $?
     else
       warn "Cannot create group $group: Unknown platform"
@@ -92,7 +92,7 @@ case $operation in
         [ -n "$shell" ] && op+=" --shell '$shell'"
         set -e
         declare_group "$login_group"
-        useradd $op "$user"
+        ( set -x; useradd $op "$user" )
       else
         warn "Cannot create user: Unknown platform"
         exit 1
@@ -104,14 +104,14 @@ case $operation in
         [ -n "$shell" ] && op+=" --shell '$shell'"
         set -e
         declare_group "$login_group"
-        usermod $op "$user"
+        ( set -x; usermod $op "$user" )
       else
         warn "Cannot update user: Unknown platform"
         exit 1
       fi
     fi
     if [ -n "$home" ] && ! [ -e "$home" ]; then
-      install -o "$user" -g "$login_group" -m 0711 -d "$home"
+      ( set -x; install -o "$user" -g "$login_group" -m 0711 -d "$home" )
     fi
     ;;
   *)
