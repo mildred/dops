@@ -13,6 +13,8 @@
 : ${DOPS_ROOT:="$(cd "$(dirname "$0")/.."; echo $PWD)"}
 : ${DOPS_CONF:="$DOPS_ROOT/conf"}
 
+redo-ifchange "$DOPS_DIR/dopsh"
+
 if [ -z "$DOPS_BIN_DIR" ]; then
   export DOPS_BIN_DIR="$DOPS_DIR/bin"
   export PATH="$DOPS_BIN_DIR:$PATH"
