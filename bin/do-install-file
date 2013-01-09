@@ -50,7 +50,7 @@ if has dpkg; then
   if !has aptitude; then
     apt-get -y install aptitude </dev/null
   fi
-  if has aptitude && !has apt-file; then
+  if has aptitude && ! has apt-file; then
     aptitude --no-gui -y install apt-file
   fi
 fi
@@ -88,7 +88,7 @@ for f in "$@"; do
     has_at_least_one=true
   else
     if has apt-file; then
-      if !$apt_file_updated; then
+      if ! $apt_file_updated; then
         apt-file update
         apt_file_updated=true
       fi
