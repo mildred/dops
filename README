@@ -112,5 +112,8 @@ What tools do I have for provisionning?
 =======================================
 
   - `do-install-file`:
-    Install a package
+    Declare wanted files or packages
+
+  - `do-passwd`:
+    Declare system users
 
