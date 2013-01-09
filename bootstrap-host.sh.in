@@ -66,6 +66,7 @@ fi
 
 mkdir -p "$dir"
 cd "$dir"
+umask 0066
 git init
 if [ -n "$branch" ] && [ master != "$branch" ]; then
   echo "Set HEAD to refs/heads/$branch"
@@ -75,6 +76,7 @@ cat >.git/hooks/post-update <<EOF
   unset GIT_DIR
   export LC_ALL=C
   cd ..
+  umask 0066
   echo "Provisionning in $PWD:"
   set -x
   git reset --hard HEAD
@@ -85,6 +87,7 @@ EOF
 chmod +x .git/hooks/post-update
 git config receive.denyCurrentBranch false
 git config receive.denyNonFastForwards false
+git config core.sharedRepository 0600
 
 echo "Bootstrapping done."
 

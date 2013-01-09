@@ -1,0 +1,84 @@
+#!/bin/sh
+
+zero="$(basename "$0")"
+usage(){
+  cat <<EOF
+$zero [-b BRANCH] [-k KEYFILE] URL [DIR]
+EOF
+}
+
+branch=HEAD
+keyfile=
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -h|--help|help)
+      usage >&2
+      exit 1
+      ;;
+    -b)
+      branch="$2"
+      shift 2
+      ;;
+    -k)
+      keyfile="$2"
+      shift 2
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+url="$1"
+dir="$2"
+
+: ${dir:="$(basename "$url")"}
+
+if [ -z "$url" ]; then
+  echo "Missing URL" >&2
+  exit 1
+fi
+
+if [ -n "$keyfile" ]; then
+  if ! [ -e "$keyfile" ]; then
+    echo "$keyfile: not found" >&2
+    exit 10
+  fi
+
+  if ! which git-ssh-wrapper >/dev/null 2>&1; then
+    do-install-file /usr/bin/gem
+    gem install git-ssh-wrapper
+  fi
+
+  wrapgit(){
+    git-ssh-wrapper "$keyfile" git "$@"
+    return $?
+  }
+else
+  wrapgit(){
+    git "$@"
+    return $?
+  }
+fi
+
+set -e
+
+if [ -e "$dir/.git" ]; then
+  cd "$dir"
+  set -x
+  wrapgit fetch "$url" "$branch"
+  wrapgit reset --hard FETCH_HEAD
+  wrapgit submodule init
+  wrapgit submodule update --recursive --force
+elif [ -e "$dir" ]; then
+  echo "$dir: already exists" >&2
+  exit 11
+else
+  wrapgit clone --recursive "$url" "$dir"
+fi
+

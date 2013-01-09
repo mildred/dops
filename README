@@ -123,3 +123,6 @@ What tools do I have for provisionning?
   - `do-passwd`:
     Declare system users
 
+  - `do-git-clone REPO PATH`:
+    Clone or update repository
+
