@@ -72,11 +72,12 @@ case $operation in
       exit 1
     fi
     : ${login_group:="$user"}
-    if has_user "$user"; then
+    if ! has_user "$user"; then
       if has useradd; then
         op="--create-home -g '$login_group'"
         [ -n "$home"  ] && op+=" --home '$home'"
         [ -n "$shell" ] && op+=" --shell '$shell'"
+        set -e
         useradd $op "$user"
       else
         warn "Cannot create user: Unknown platform"
@@ -86,7 +87,9 @@ case $operation in
       if has usermod; then
         if ! has_group "$login_group"; then
           if has groupadd; then
+            set -e
             groupadd "$login_group"
+            set +e
           else
             warn "Cannot create group: Unknown platform"
             exit 1
@@ -95,6 +98,7 @@ case $operation in
         op="--move-home -g '$login_group'"
         [ -n "$home"  ] && op+=" --home '$home'"
         [ -n "$shell" ] && op+=" --shell '$shell'"
+        set -e
         usermod $op "$user"
       else
         warn "Cannot update user: Unknown platform"
