@@ -11,6 +11,8 @@ warn(){
   echo "$@" >&2
 }
 
+
+apt_file_updated=false
 do_fail_if_not_found=true
 pkg_list=
 has_at_least_one=false
@@ -44,6 +46,14 @@ while [ -n "$1" ]; do
   esac
 done
 
+if has dpkg; then
+  if !has aptitude; then
+    apt-get -y install aptitude </dev/null
+  fi
+  if has aptitude && !has apt-file; then
+    aptitude --no-gui -y install apt-file
+  fi
+fi
 
 pkgs=
 for p in $pkg_list; do
@@ -77,7 +87,13 @@ for f in "$@"; do
   if [ -e "$f" ]; then
     has_at_least_one=true
   else
-    if has pkcon; then
+    if has apt-file; then
+      if !$apt_file_updated; then
+        apt-file update
+        apt_file_updated=true
+      fi
+      pkgs="$pkgs $(apt-file --package-only search "$f" | sort | uniq)"
+    elif has pkcon; then
       pkg="$(pkcon -y what-provides -p -y "$f" </dev/null | grep '^Available' | awk '{ print $2 }' | cut -d- -f1 | sort | uniq)"
       if [ -n "$pkg" ]; then
         pkgs="$pkgs $pkg"
@@ -95,6 +111,7 @@ done
 if [ -n "$(echo $pkgs)" ]; then
   echo "Installing: $pkgs"
   if has aptitude; then
+    aptitude update
     aptitude --no-gui -y install $pkgs </dev/null
   elif has pkcon; then
     # Go to empty directory so package name cannot be confused with files
