@@ -65,6 +65,19 @@ has_group(){
   cut -d: -f1 /etc/group | fgrep -x "$1" >/dev/null
 }
 
+declare_group(){
+  local group="$1"
+  if ! has_group "$group"; then
+    if has groupadd; then
+      groupadd "$group"
+      return $?
+    else
+      warn "Cannot create group $group: Unknown platform"
+      return 1
+    fi
+  fi
+}
+
 case $operation in
   declare-user)
     if [ -z "$user" ]; then
@@ -78,6 +91,7 @@ case $operation in
         [ -n "$home"  ] && op+=" --home '$home'"
         [ -n "$shell" ] && op+=" --shell '$shell'"
         set -e
+        declare_group "$login_group"
         useradd $op "$user"
       else
         warn "Cannot create user: Unknown platform"
@@ -85,20 +99,11 @@ case $operation in
       fi
     else
       if has usermod; then
-        if ! has_group "$login_group"; then
-          if has groupadd; then
-            set -e
-            groupadd "$login_group"
-            set +e
-          else
-            warn "Cannot create group: Unknown platform"
-            exit 1
-          fi
-        fi
         op="--move-home -g '$login_group'"
         [ -n "$home"  ] && op+=" --home '$home'"
         [ -n "$shell" ] && op+=" --shell '$shell'"
         set -e
+        declare_group "$login_group"
         usermod $op "$user"
       else
         warn "Cannot update user: Unknown platform"
