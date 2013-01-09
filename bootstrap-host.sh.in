@@ -31,7 +31,7 @@ dir="$1"
 branch="$2"
 ver=20130108
 
-pkgs_deb="git-core packagekit"
+pkgs_deb="git-core"
 pkgs_rpm="git PackageKit"
 redo_url="https://github.com/mildred/redo.git"
 expect_bin="git redo"
