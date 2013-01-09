@@ -84,7 +84,7 @@ case $operation in
       fi
     else
       if has usermod; then
-        if !has_group "$login_group"; then
+        if ! has_group "$login_group"; then
           if has groupadd; then
             groupadd "$login_group"
           else
