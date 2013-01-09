@@ -41,6 +41,13 @@ if ! has redo; then
     cd /opt/redo
     ./redo install
   )
+elif [ -e /opt/redo ]; then
+  (
+    cd /opt/redo
+    git fetch origin
+    git reset --hard origin
+    ./redo install
+  )
 fi
 
 failed=false
