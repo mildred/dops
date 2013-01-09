@@ -9,7 +9,7 @@ usage(){
 
 force=false
 while true; do
-  case $1 in
+  case "$1" in
     -f)
       force=true
       shift
@@ -28,6 +28,7 @@ if [ $# -lt 1 ]; then
 fi
 
 dir="$1"
+branch="$2"
 ver=20130108
 
 pkgs_deb="git-core"
@@ -66,6 +67,10 @@ fi
 mkdir -p "$dir"
 cd "$dir"
 git init
+if [ -n "$branch" ] && [ master != "$branch" ]; then
+  echo "Set HEAD to refs/heads/$branch"
+  git symbolic-ref HEAD "refs/heads/$branch"
+fi
 cat >.git/hooks/post-update <<EOF
   unset GIT_DIR
   export LC_ALL=C

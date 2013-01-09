@@ -42,6 +42,10 @@ else
   dir="${dir%/.git}"
 fi
 
+if current_branch="$(git symbolic-ref HEAD 2>/dev/null)"; then
+  current_branch="${current_branch#refs/heads/}"
+fi
+
 DOPS_DIR="$(cd "$(dirname "$0")"; pwd)"
 
 set -e
@@ -55,7 +59,7 @@ if $create_remote; then
 fi
 
 redo-ifchange "$DOPS_DIR/bootstrap-host.sh"
-if (set -x; ssh "$host" "sh -s $REMOTE_OPTS '$dir'" <"$DOPS_DIR/bootstrap-host.sh"); then
+if (set -x; ssh "$host" "sh -s -- $REMOTE_OPTS '$dir' '$current_branch'" <"$DOPS_DIR/bootstrap-host.sh"); then
     set +e
     echo
     echo "$host has been bootstrapped in $dir"
@@ -69,11 +73,11 @@ fi
 echo
 echo "Now, to provision on the last commit, run:"
 echo
-echo "    git push -u $remote HEAD:master"
+echo "    git push -u $remote ${current_branch:-HEAD:master}"
 echo
 echo "to create a temporary commit and push it, run:"
 echo
-echo "    git cipush -u $remote HEAD:master"
+echo "    git cipush -u $remote ${current_branch:-HEAD:master}"
 echo
 
 exit 0
