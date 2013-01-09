@@ -62,6 +62,12 @@ redo-cat(){
 redo-catx(){
   ( set +e
     redo-ifchange "$@"
+    local v
+    for v in "$@"; do
+      if ! [ -e "$v" ];
+        redo-ifcreate "$v"
+      fi
+    done
     cat "$@" 2>/dev/null
   )
   return 0
