@@ -47,7 +47,7 @@ while [ -n "$1" ]; do
 done
 
 if has dpkg; then
-  if !has aptitude; then
+  if ! has aptitude; then
     apt-get -y install aptitude </dev/null
   fi
   if has aptitude && ! has apt-file; then
@@ -92,7 +92,7 @@ for f in "$@"; do
         apt-file update
         apt_file_updated=true
       fi
-      pkgs="$pkgs $(apt-file --package-only search "$f" | sort | uniq)"
+      pkgs="$pkgs $(apt-file --package-only -F search "$f" | sort | uniq)"
     elif has pkcon; then
       pkg="$(pkcon -y what-provides -p -y "$f" </dev/null | grep '^Available' | awk '{ print $2 }' | cut -d- -f1 | sort | uniq)"
       if [ -n "$pkg" ]; then
