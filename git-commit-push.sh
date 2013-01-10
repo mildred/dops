@@ -112,8 +112,13 @@ trap warning INT
 echo " $(git rev-parse HEAD) . ($(git describe --all HEAD))"
 git submodule status --recursive
 
-cleanup(){
-  echo "Clean up..." >&2
+cleanupall(){
+  cleanup1
+  cleanup2
+}
+
+cleanup1(){
+  echo "Clean up submodules..." >&2
 (
   git submodule foreach --recursive --quiet \
     '
@@ -123,7 +128,6 @@ cleanup(){
     (set -x; cd "$modpath"; git reset --mixed HEAD_UNTRACKED^)
     cd "$modpath"
     '
-  (set -x; git reset --mixed HEAD_UNTRACKED^)
 
   git submodule foreach --recursive --quiet \
     '
@@ -133,8 +137,16 @@ cleanup(){
     (set -x; cd "$modpath"; git reset --soft HEAD_STAGING^)
     cd "$modpath"
     '
+) >/dev/null 2>&1
+}
+
+cleanup2(){
+  echo "Clean up master repository..." >&2
+(
+  (set -x; git reset --mixed HEAD_UNTRACKED^)
   (set -x; git reset --soft HEAD_STAGING^)
 ) >/dev/null 2>&1
+  trap : INT
 }
 
 trap error INT
@@ -150,10 +162,11 @@ git submodule foreach --recursive --quiet \
 rm -rf "$GIT_DIR/refs/tags"
 mv "$GIT_DIR/refs/cipush-submodules-saved-tags" "$GIT_DIR/refs/tags"
 
-trap cleanup INT
+trap cleanupall INT
+cleanup1
 
 ( set -x; git push -f "${GIT_PUSH_OPTS[@]}" "$@" )
 
-cleanup
+cleanup2
 
 
