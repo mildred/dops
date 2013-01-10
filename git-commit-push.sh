@@ -77,6 +77,20 @@ export SCRIPT_COMMIT_UNTRACKED='
   git update-ref HEAD_UNTRACKED HEAD
 '
 
+warning(){
+  echo "WARNING: git-commit-push could not finish" >&2
+  echo "WARNING: Your repositories may have extra commits corresponding" >&2
+  echo "WARNING: to the staging area and the untracked changes" >&2
+}
+
+error(){
+  echo "ERROR: git-commit-push was interrupted in a delicate process" >&2
+  echo "ERROR: Your tags may have disappeared. They are recoverable in" >&2
+  echo "ERROR: refs/cipush-submodules-saved-tags/" >&2
+}
+
+trap warning INT
+
 (
   git update-ref OLD_HEAD HEAD
 
@@ -99,10 +113,7 @@ echo " $(git rev-parse HEAD) . ($(git describe --all HEAD))"
 git submodule status --recursive
 
 cleanup(){
-  if [ -e "$GIT_DIR/refs/cipush-submodules-saved-tags" ]; then
-    rm -rf "$GIT_DIR/refs/tags"
-    mv "$GIT_DIR/refs/cipush-submodules-saved-tags" "$GIT_DIR/refs/tags"
-  fi
+  echo "Clean up..." >&2
 (
   git submodule foreach --recursive --quiet \
     '
@@ -126,7 +137,7 @@ cleanup(){
 ) >/dev/null 2>&1
 }
 
-trap cleanup INT
+trap error INT
 
 mv "$GIT_DIR/refs/tags" "$GIT_DIR/refs/cipush-submodules-saved-tags" || exit 1
 git submodule foreach --recursive --quiet \
@@ -135,10 +146,13 @@ git submodule foreach --recursive --quiet \
   modpath="${modpath#$GIT_CIPUSH_TOPLEVEL/}"
   git push "$GIT_CIPUSH_TOPLEVEL" "+HEAD_UNTRACKED:refs/tags/submodules/$modpath/HEAD_UNTRACKED" >/dev/null 2>&1
   '
-( set -x
-  git push -f --tags $GIT_PUSH_REPO
-  git push -f "${GIT_PUSH_OPTS[@]}" "$@"
-)
+( set -x; git push -f --tags $GIT_PUSH_REPO )
+rm -rf "$GIT_DIR/refs/tags"
+mv "$GIT_DIR/refs/cipush-submodules-saved-tags" "$GIT_DIR/refs/tags"
+
+trap cleanup INT
+
+( set -x; git push -f "${GIT_PUSH_OPTS[@]}" "$@" )
 
 cleanup
 
