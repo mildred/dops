@@ -147,8 +147,8 @@ cleanup2(){
   echo "Clean up master repository..." >&2
 (
   (set -x; git reset --mixed HEAD_UNTRACKED^)
-  (set -x; git reset --soft HEAD_STAGING^)
   git update-ref -d HEAD_UNTRACKED
+  (set -x; git reset --soft HEAD_STAGING^)
   git update-ref -d HEAD_STAGING
   git update-ref -d HEAD_OLD
 ) >/dev/null 2>&1
