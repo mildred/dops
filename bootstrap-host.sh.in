@@ -57,7 +57,7 @@ echo "==> Create repository in $dir"
 
 if [ -e "$dir/.git" ]; then
   ( cd "$dir"
-    current_node_id="$(git config dops.node_id)"
+    current_node_id="$(cat .git/info/dops_node_id 2>/dev/null)"
     if [ "a$node_id" != "a$current_node_id" ] && [ -n "$current_node_id" ]; then
       warn
       warn "ERROR: You are bootstrapping the wrong node"
@@ -68,41 +68,72 @@ if [ -e "$dir/.git" ]; then
   )
 fi
 
+configure(){
+  umask 0066
+  cd "$1"
+  GIT_DIR="$(git rev-parse --git-dir)"
+  echo "Set node_id to '$node_id'"
+  echo "$node_id" >"$GIT_DIR/info/dops_node_id"
+  if [ -n "$branch" ] && [ master != "$branch" ]; then
+    echo "Set HEAD to refs/heads/$branch"
+    git symbolic-ref HEAD "refs/heads/$branch"
+  fi
+  cat >"$GIT_DIR/hooks/post-update" <<"EOF"
+    run_provisioning(){
+      umask 0066
+      unset GIT_DIR
+      export LC_ALL=C
+      cd ..
+      #for rev in .git/refs/tags/submodules/**/HEAD_UNTRACKED; do
+      #  rev="${rev#.git/}"
+      #  submodule="${rev#refs/tags/submodules/}"
+      #  submodule="${submodule%/HEAD_UNTRACKED}"
+      #  sha1="$(git rev-parse "$rev")"
+      #  (set -x; git push "$submodule" +"$sha1:refs/tags/DOPS_HEAD_UNTRACKED")
+      #done
+      echo "Provisionning in $PWD:"
+      ( set -x
+        git reset --hard HEAD
+        git submodule update --init --no-fetch --recursive --force --reference "$PWD"
+      )
+      echo " $(git rev-parse HEAD) . ($(git describe --all HEAD))"
+      git submodule status --recursive
+      ( set -x
+        redo provision
+      )
+    }
+    
+    
+    HEAD="$(git symbolic-ref HEAD)"
+    for ref in "$@"; do
+      if [ "x$ref" = "x$HEAD" ]; then
+        ( run_provisioning )
+      fi
+    done
+EOF
+  chmod +x "$GIT_DIR/hooks/post-update"
+  git config receive.denyCurrentBranch false
+  git config receive.denyNonFastForwards false
+  git config core.sharedRepository 0600
+}
+
 if [ -e "$dir" ] && $force; then
   warn "$dir: removing (-f provided)"
   rm -rf "$dir"
 fi
 
-if [ -e "$dir" ]; then
+if [ -e "$dir/.git" ]; then
+  configure "$dir"
+elif [ -e "$dir" ]; then
   warn "$dir: already exists"
   exit 1
-fi
-
-mkdir -p "$dir"
-cd "$dir"
-git config dops.node_id "$node_id"
-umask 0066
-git init
-if [ -n "$branch" ] && [ master != "$branch" ]; then
-  echo "Set HEAD to refs/heads/$branch"
-  git symbolic-ref HEAD "refs/heads/$branch"
-fi
-cat >.git/hooks/post-update <<EOF
-  unset GIT_DIR
-  export LC_ALL=C
-  cd ..
+else
+  mkdir -p "$dir"
+  cd "$dir"
   umask 0066
-  echo "Provisionning in $PWD:"
-  set -x
-  git reset --hard HEAD
-  git submodule init
-  git submodule update --recursive --force
-  redo provision
-EOF
-chmod +x .git/hooks/post-update
-git config receive.denyCurrentBranch false
-git config receive.denyNonFastForwards false
-git config core.sharedRepository 0600
+  git init
+  configure "."
+fi
 
 echo "Bootstrapping done."
 
