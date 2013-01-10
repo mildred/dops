@@ -127,6 +127,7 @@ cleanup1(){
     cd "$GIT_CIPUSH_TOPLEVEL"
     (set -x; cd "$modpath"; git reset --mixed HEAD_UNTRACKED^)
     cd "$modpath"
+    git update-ref -d HEAD_UNTRACKED
     '
 
   git submodule foreach --recursive --quiet \
@@ -136,6 +137,8 @@ cleanup1(){
     cd "$GIT_CIPUSH_TOPLEVEL"
     (set -x; cd "$modpath"; git reset --soft HEAD_STAGING^)
     cd "$modpath"
+    git update-ref -d HEAD_STAGING
+    git update-ref -d HEAD_OLD
     '
 ) >/dev/null 2>&1
 }
@@ -145,6 +148,9 @@ cleanup2(){
 (
   (set -x; git reset --mixed HEAD_UNTRACKED^)
   (set -x; git reset --soft HEAD_STAGING^)
+  git update-ref -d HEAD_UNTRACKED
+  git update-ref -d HEAD_STAGING
+  git update-ref -d HEAD_OLD
 ) >/dev/null 2>&1
   trap : INT
 }
