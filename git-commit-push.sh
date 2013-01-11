@@ -164,7 +164,11 @@ git submodule foreach --recursive --quiet \
   modpath="${modpath#$GIT_CIPUSH_TOPLEVEL/}"
   git push "$GIT_CIPUSH_TOPLEVEL" "+HEAD_UNTRACKED:refs/tags/submodules/$modpath/HEAD_UNTRACKED" >/dev/null 2>&1
   '
-( set -x; git push -f --tags $GIT_PUSH_REPO )
+if [ -n "$GIT_PUSH_REPO" ]; then
+  ( set -x; git push -f --tags "$GIT_PUSH_REPO" )
+else
+  ( set -x; git push -f --tags )
+fi
 rm -rf "$GIT_DIR/refs/tags"
 mv "$GIT_DIR/refs/cipush-submodules-saved-tags" "$GIT_DIR/refs/tags"
 

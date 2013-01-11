@@ -1,6 +1,9 @@
 #!/bin/bash
 # usage: bootstrap-ssh.sh remote user@host dir
 
+: ${DOPS_SSH:="$GIT_SSH"}
+: ${DOPS_SSH:=ssh}
+
 zero="$(basename "$0")"
 usage(){
     echo "Usage: $zero [-f] [-n NODE_ID] [--] REMOTE [USER@HOST DIR]" >&2
@@ -66,7 +69,7 @@ if $create_remote; then
 fi
 
 redo-ifchange "$DOPS_DIR/bootstrap-host.sh"
-if (set -x; ssh "$host" "sh -s -- $REMOTE_OPTS '$node_id' '$dir' '$current_branch'" <"$DOPS_DIR/bootstrap-host.sh"); then
+if (set -x; "$DOPS_SSH" "$host" "sh -s -- $REMOTE_OPTS '$node_id' '$dir' '$current_branch'" <"$DOPS_DIR/bootstrap-host.sh"); then
     set +e
     echo
     echo "$host has been bootstrapped in $dir"

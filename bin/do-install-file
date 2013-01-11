@@ -11,29 +11,36 @@ warn(){
   echo "$@" >&2
 }
 
+if has redo-exec && [ -n "$REDO" ]; then
+  # Install can start service on some distributions
+  # make sure we do this outside of redo
+  exec redo-exec "$0" "$@"
+fi
+
 
 apt_file_updated=false
-do_fail_if_not_found=true
-pkg_list=
+pkg_arg_list=
 has_at_least_one=false
+mode=and
 
 while [ -n "$1" ]; do
   case $1 in
     --any)
       has_at_least_one=true
+      mode=any
       shift
       ;;
     -o|--or|--either)
-      do_fail_if_not_found=false
+      mode=or
       shift
       ;;
     -a|--and|--all)
-      do_fail_if_not_found=true
+      mode=and
       shift
       ;;
     -p|--package)
       shift
-      pkg_list="$pkg_list $1"
+      pkg_arg_list="$pkg_arg_list $1"
       shift
       ;;
     --)
@@ -46,6 +53,27 @@ while [ -n "$1" ]; do
   esac
 done
 
+when_not_found(){
+  if [ $mode = and ]; then
+    warn "$1: package not found"
+    exit 1
+  fi
+}
+when_found_f(){
+  if [ -n "$2" ]; then
+    pkgs="$pkgs '$2'"
+  else
+    when_not_found "$1"
+  fi
+}
+when_found_p(){
+  if [ $1 -eq 0 ]; then
+    pkgs="$pkgs '$2'"
+  else
+    when_not_found "$2"
+  fi
+}
+
 if has dpkg; then
   if ! has aptitude; then
     apt-get -y install aptitude </dev/null
@@ -56,7 +84,44 @@ if has dpkg; then
 fi
 
 pkgs=
-for p in $pkg_list; do
+
+for f in "$@"; do
+  if [ -e "$f" ]; then
+    has_at_least_one=true
+  fi
+done
+
+for f in "$@"; do
+  if [ $mode = or ] && $has_at_least_one; then
+    break
+  fi
+  if ! [ -e "$f" ]; then
+    if has apt-file; then
+      if ! $apt_file_updated; then
+        apt-file update
+        apt_file_updated=true
+      fi
+      when_found_f "$f" "$( \
+        apt-file --package-only -F search "$f" \
+          | sort | uniq)"
+    elif has pkcon; then
+      when_found_f "$f" "$( \
+        pkcon -y what-provides -p -y "$f" </dev/null \
+          | grep '^Available' \
+          | awk '{ print $2 }' \
+          | cut -d- -f1 \
+          | sort | uniq)"
+    else
+      warn "$self: Platform not supported, please install PackageKit (pkcon)"
+      exit 1
+    fi
+  fi
+done
+
+for p in $pkg_arg_list; do
+  if [ $mode = or ] && $has_at_least_one; then
+    break
+  fi
   if has dpkg; then
     if dpkg -s "$p" </dev/null >/dev/null 2>&1; then
       has_at_least_one=true
@@ -64,47 +129,14 @@ for p in $pkg_list; do
     fi
   fi
   if has aptitude; then
-    if aptitude --no-gui -y show $p >/dev/null 2>&1 </dev/null; then
-      pkgs="$pkgs $p"
-    elif $do_fail_if_not_found; then
-      warn "$p: package not found"
-      exit 1
-    fi
+    aptitude --no-gui -y show "$p" >/dev/null 2>&1 </dev/null
+    when_found_p $? "$p"
   elif has pkcon; then
-    if pkcon -y get-details $p >/dev/null 2>&1 </dev/null; then
-      pkgs="$pkgs $p"
-    elif $do_fail_if_not_found; then
-      warn "$p: package not found"
-      exit 1
-    fi
+    pkcon -y get-details "$p" >/dev/null 2>&1 </dev/null
+    when_found_p $? "$p"
   else
     warn "$self: Platform not supported, please install PackageKit (pkcon)"
     exit 1
-  fi
-done
-
-for f in "$@"; do
-  if [ -e "$f" ]; then
-    has_at_least_one=true
-  else
-    if has apt-file; then
-      if ! $apt_file_updated; then
-        apt-file update
-        apt_file_updated=true
-      fi
-      pkgs="$pkgs $(apt-file --package-only -F search "$f" | sort | uniq)"
-    elif has pkcon; then
-      pkg="$(pkcon -y what-provides -p -y "$f" </dev/null | grep '^Available' | awk '{ print $2 }' | cut -d- -f1 | sort | uniq)"
-      if [ -n "$pkg" ]; then
-        pkgs="$pkgs $pkg"
-      elif $do_fail_if_not_found; then
-        warn "$f: package not found"
-        exit 1
-      fi
-    else
-      warn "$self: Platform not supported, please install PackageKit (pkcon)"
-      exit 1
-    fi
   fi
 done
 

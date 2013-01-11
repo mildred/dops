@@ -9,8 +9,6 @@
 #  exec "$DOPS_DIR/redo-sh" "$0" "$@"
 #fi
 
-exec 4>&1 >&3 3>&4 4>&-
-
 : ${DOPS_DIR:="$(dirname "$(readlink -f "$0")")"}
 : ${DOPS_ROOT:="$(cd "$DOPS_DIR/.."; echo $PWD)"}
 : ${DOPS_CONF:="$DOPS_ROOT/conf"}
@@ -127,20 +125,99 @@ do-recordc(){
   do-recordf "$1" "$2" "$DOPS_CONF/$(basename "$PWD")/$1"
 }
 
+dopsh-init(){
+  zero="$(basename "$0")"
+  DOPSH_CALL_DIR="$PWD"
+  cd "$(dirname "$DOPSH_DO_FILE")"
+}
+
+dopsh-parseopt(){
+  local template=" $1 "
+  shift
+  declare -a opts
+  while [ $# -gt 0 ]; do
+    local s=1
+    local arg=
+    case "$1" in
+      --*|-*|--*=*|-*=*)
+        arg="${1#*-}"
+        val="${arg#*=}"
+        arg="${arg%%=*}"
+        if [[ "${template// +$arg /}" != "$template" ]]; then
+          s=1
+          : "${val:=true}"
+          if [[ $val != true ]] && [[ $val != false ]]; then
+            echo "Expected true or valse for --$arg" >&2
+            return 1
+          fi
+          eval "op_${arg}=$val"
+          arg="+$arg"
+        else
+          if [[ "${1%%=*}" != "$1" ]]; then
+            val="$2"
+            s=2
+          else
+            s=1
+          fi
+          eval "declare -a op_${arg}s"
+          eval "op_${arg}s=(\"\${${arg}s[@]}\" \"\$val\")"
+          eval "op_${arg}=\"\$val\""
+          arg="$arg="
+        fi
+        ;;
+      -no-*|--no-)
+        s=1
+        arg="${1#*no-}"
+        eval "op_${arg}=false"
+        arg="+$arg"
+        ;;
+      --)
+        s=0
+        shift
+        opts=("${opts[@]}" "$@")
+        break
+        ;;
+      *)
+        opts=("${opts[@]}" "$1")
+        shift
+        ;;
+    esac
+    if [[ -n "$arg" ]] && [[ "${template// $arg /}" = "$template" ]]; then
+      echo "Unknown argument $1" >&2
+      return 1
+    fi
+    shift $s
+  done
+  local op
+  local n=1
+  for op in $template; do
+    if [[ "${op#+}" != "$op" ]]; then
+      :
+    elif [[ "${op%=}" != "$op" ]]; then
+      :
+    elif [[ $n -gt "${#opts}" ]]; then
+      echo "Missing argument $op" >&2
+      return 1
+    else
+      eval "op_$op=\"\${opts[$n]}\""
+    fi
+  done
+}
+
 DOPSH_STAMP=false
 redo-always-stamp(){
   redo-always
   DOPSH_STAMP=true
 }
 
-do_file="$1"
+DOPSH_DO_FILE="$1"
 shift
 
 (
   [ -n "$REDO_XTRACE" ] && set -x
   [ -n "$REDO_VERBOSE" ] && set -v
   set -e
-  source "$do_file"
+  source "$DOPSH_DO_FILE"
 )
 res=$?
 

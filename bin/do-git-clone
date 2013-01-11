@@ -3,12 +3,20 @@
 zero="$(basename "$0")"
 usage(){
   cat <<EOF
-$zero [-b BRANCH] [-k KEYFILE] URL [DIR]
+$zero [-b BRANCH] [-k KEYFILE] [-s STAMPFILE] URL [DIR]
 EOF
+}
+
+abs(){
+  (
+    cd "$(dirname "$1")"
+    echo "$PWD/$(basename "$1")"
+  )
 }
 
 branch=HEAD
 keyfile=
+stampfile=
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -21,7 +29,11 @@ while [ $# -gt 0 ]; do
       shift 2
       ;;
     -k)
-      keyfile="$2"
+      keyfile="`abs "$2"`"
+      shift 2
+      ;;
+    -s)
+      stampfile="`abs "$2"`"
       shift 2
       ;;
     --)
@@ -73,12 +85,16 @@ if [ -e "$dir/.git" ]; then
   set -x
   wrapgit fetch "$url" "$branch"
   wrapgit reset --hard FETCH_HEAD
-  wrapgit submodule init
-  wrapgit submodule update --recursive --force
+  wrapgit submodule update --init --recursive --force
 elif [ -e "$dir" ]; then
   echo "$dir: already exists" >&2
   exit 11
 else
   wrapgit clone --recursive "$url" "$dir"
+  cd "$dir"
+fi
+
+if [ -n "$stampfile" ]; then
+  git rev-parse HEAD >"$stampfile"
 fi
 

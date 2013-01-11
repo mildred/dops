@@ -107,6 +107,9 @@ What functions and executables come with the dopsh shell?
   - `redo-source-cat`:
     `redo` a file, source it and `cat` it afterwards
 
+  - `redo-always-stamp`:
+    `redo-always` with `redo-stamp <"$3"` (performed at the end of the script)
+
   - `do-record VAR DEFVAL VAL`
 
   - `do-recordf VAR DEFVAL FILE`

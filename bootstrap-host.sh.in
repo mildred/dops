@@ -99,7 +99,7 @@ configure(){
       echo " $(git rev-parse HEAD) . ($(git describe --all HEAD))"
       git submodule status --recursive
       ( set -x
-        redo provision
+        redo --color provision
       )
     }
     
