@@ -248,10 +248,24 @@ dopsh-parseopt(){
       eval ": \${op_${op#h:}:=false}"
     elif [[ "${op#H:}" != "$op" ]]; then
       eval ": \${op_${op#h:}:=false}"
+    elif [[ "${op%\*}" != "$op" ]]; then
+      local nam="${op%\*}"
+      eval "op_${nam}s=()"
+      while [[ $n -le "${#opts[@]}" ]]; do
+        eval "op_${nam}s=(\"\${op_${nam}s[@]}\" \"\${opts[$n-1]}\")"
+        let n=n+1
+      done
     elif [[ $n -gt "${#opts[@]}" ]]; then
       echo "Missing argument $op" >&2
       dopsh-usage "$template" >&2
       return 1
+    elif [[ "${op%+}" != "$op" ]]; then
+      local nam="${op%+}"
+      eval "op_${nam}s=()"
+      while [[ $n -le "${#opts[@]}" ]]; do
+        eval "op_${nam}s=(\"\${op_${nam}s[@]}\" \"\${opts[$n-1]}\")"
+        let n=n+1
+      done
     else
       eval "op_$op=\"\${opts[$n-1]}\""
       let n=n+1
