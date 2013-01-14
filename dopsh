@@ -139,6 +139,12 @@ dopsh-usage(){
       echo -n " -${op2}?"
     elif [[ "$op2" != "$op" ]]; then
       echo -n " -$op"
+    elif [[ "${op%+}" != "$op" ]]; then
+      local op2="$(tr a-z A-Z <<<"${op%+}")"
+      echo -n " $op2..."
+    elif [[ "${op%\*}" != "$op" ]]; then
+      local op2="$(tr a-z A-Z <<<"${op%+}")"
+      echo -n " [$op2...]"
     elif [[ "${op#h:}" != "$op" ]] || [[ "${op#H:}" != "$op" ]]; then
       help=true
     else
