@@ -99,7 +99,8 @@ What functions and executables come with the dopsh shell?
     quote its argument so it can be read safely from the shell
 
   - `redo-cat[x]`:
-    `redo` a file and `cat` it afterwards, `catx` if you don't care about the file existance
+    `redo` a file and `cat` it afterwards, `catx` if you don't care about the
+    file existance
 
   - `redo-source`:
     `redo` a file and source it afterwards
@@ -107,8 +108,9 @@ What functions and executables come with the dopsh shell?
   - `redo-source-cat`:
     `redo` a file, source it and `cat` it afterwards
 
-  - `redo-always-stamp`:
-    `redo-always` with `redo-stamp <"$3"` (performed at the end of the script)
+  - `redo-always-stamp [FILE|-]`:
+    `redo-always` with `redo-stamp` (put this after FILE which defaults to $3
+    has been written)
 
   - `do-record VAR DEFVAL VAL`
 

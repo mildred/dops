@@ -32,8 +32,8 @@ dir="$2"
 branch="$3"
 ver=20130108
 
-pkgs_deb="git-core"
-pkgs_rpm="git PackageKit"
+pkgs_deb="git-core python-setproctitle"
+pkgs_rpm="git PackageKit python-setproctitle"
 redo_url="https://github.com/mildred/redo.git"
 expect_bin="git redo"
 
@@ -84,13 +84,9 @@ configure(){
       unset GIT_DIR
       export LC_ALL=C
       cd ..
-      #for rev in .git/refs/tags/submodules/**/HEAD_UNTRACKED; do
-      #  rev="${rev#.git/}"
-      #  submodule="${rev#refs/tags/submodules/}"
-      #  submodule="${submodule%/HEAD_UNTRACKED}"
-      #  sha1="$(git rev-parse "$rev")"
-      #  (set -x; git push "$submodule" +"$sha1:refs/tags/DOPS_HEAD_UNTRACKED")
-      #done
+      # Git leaks file descriptors, attempt to close them
+      exec 3>&- 3>&- 5>&- 6>&- 7>&- 8>&- 9>&-
+
       echo "Provisionning in $PWD:"
       ( set -x
         git reset --hard HEAD
@@ -98,9 +94,14 @@ configure(){
       )
       echo " $(git rev-parse HEAD) . ($(git describe --all HEAD))"
       git submodule status --recursive
+      t="$(tempfile)" || exit
+      trap "rm -f -- '$t'" EXIT
       ( set -x
-        redo --color provision
-      )
+        redo --color provision >"$t" 2>&1 </dev/null
+      ) &
+      tail -n 0 --pid $! -f "$t"
+      rm -f -- "$t"
+      trap - EXIT
     }
     
     

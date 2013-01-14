@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Problem: pkcon sometimes ask to choose between alternatives i686 and x86_64
 
 self="$(basename "$0")"
@@ -19,7 +19,7 @@ fi
 
 
 apt_file_updated=false
-pkg_arg_list=
+pkg_arg_list=()
 has_at_least_one=false
 mode=and
 
@@ -40,7 +40,7 @@ while [ -n "$1" ]; do
       ;;
     -p|--package)
       shift
-      pkg_arg_list="$pkg_arg_list $1"
+      pkg_arg_list=("${pkg_arg_list[@]}" "$1")
       shift
       ;;
     --)
@@ -53,6 +53,8 @@ while [ -n "$1" ]; do
   esac
 done
 
+pkgs=()
+
 when_not_found(){
   if [ $mode = and ]; then
     warn "$1: package not found"
@@ -61,14 +63,14 @@ when_not_found(){
 }
 when_found_f(){
   if [ -n "$2" ]; then
-    pkgs="$pkgs '$2'"
+    pkgs=("${pkgs[@]}" "$2")
   else
     when_not_found "$1"
   fi
 }
 when_found_p(){
   if [ $1 -eq 0 ]; then
-    pkgs="$pkgs '$2'"
+    pkgs=("${pkgs[@]}" "$2")
   else
     when_not_found "$2"
   fi
@@ -83,15 +85,16 @@ if has dpkg; then
   fi
 fi
 
-pkgs=
-
+files_list=()
 for f in "$@"; do
   if [ -e "$f" ]; then
     has_at_least_one=true
+  else
+    files_list=("${files_list[@]}" "$f")
   fi
 done
 
-for f in "$@"; do
+for f in "${files_list[@]}"; do
   if [ $mode = or ] && $has_at_least_one; then
     break
   fi
@@ -118,15 +121,26 @@ for f in "$@"; do
   fi
 done
 
-for p in $pkg_arg_list; do
-  if [ $mode = or ] && $has_at_least_one; then
-    break
-  fi
+pkg_arg_list2=()
+for p in "${pkg_arg_list[@]}"; do
   if has dpkg; then
     if dpkg -s "$p" </dev/null >/dev/null 2>&1; then
       has_at_least_one=true
-      continue
+    else
+      pkg_arg_list2=("${pkg_arg_list2[@]}" "$p")
     fi
+  elif has rpm; then
+    if rpm -q "$p" </dev/null >/dev/null 2>&1; then
+      has_at_least_one=true
+    else
+      pkg_arg_list2=("${pkg_arg_list2[@]}" "$p")
+    fi
+  fi
+done
+
+for p in "${pkg_arg_list2[@]}"; do
+  if [ $mode = or ] && $has_at_least_one; then
+    break
   fi
   if has aptitude; then
     aptitude --no-gui -y show "$p" >/dev/null 2>&1 </dev/null
@@ -140,17 +154,17 @@ for p in $pkg_arg_list; do
   fi
 done
 
-if [ -n "$(echo $pkgs)" ]; then
-  echo "Installing: $pkgs"
+if [ "${#pkgs[@]}" -gt 0 ]; then
+  echo "Installing: ${pkgs[@]}"
   if has aptitude; then
     aptitude update
-    aptitude --no-gui -y install $pkgs </dev/null
+    aptitude --no-gui -y install "${pkgs[@]}" </dev/null
   elif has pkcon; then
     # Go to empty directory so package name cannot be confused with files
     mkdir /tmp/pkcon-empty
     (
       cd /tmp/pkcon-empty
-      pkcon -y install $pkgs </dev/null
+      pkcon -y install "${pkgs[@]}" </dev/null
     )
     rmdir /tmp/pkcon-empty
   fi

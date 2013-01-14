@@ -126,50 +126,97 @@ do-recordc(){
 }
 
 dopsh-init(){
-  zero="$(basename "$0")"
   DOPSH_CALL_DIR="$PWD"
   cd "$(dirname "$DOPSH_DO_FILE")"
+}
+
+dopsh-usage(){
+  local help=false
+  echo -n "$DOPSH_ARG0"
+  for op in $template; do
+    local op2="${op#-}"
+    if [[ "${op2%=}" != "$op2" ]]; then
+      echo -n " -${op2}?"
+    elif [[ "$op2" != "$op" ]]; then
+      echo -n " -$op"
+    elif [[ "${op#h:}" != "$op" ]] || [[ "${op#H:}" != "$op" ]]; then
+      help=true
+    else
+      echo -n " $(tr a-z A-Z <<<"$op")"
+    fi
+  done
+  echo
+  if $help; then
+    echo -n "$DOPSH_ARG0"
+    for op in $template; do
+      if [[ "${op#h:}" != "$op" ]]; then
+        echo -n " --${op#h:}"
+      elif [[ "${op#H:}" != "$op" ]]; then
+        echo -n " --${op#H:}"
+      fi
+    done
+    echo " (show this help)"
+  fi
 }
 
 dopsh-parseopt(){
   local template=" $1 "
   shift
-  declare -a opts
+  opts=()
   while [ $# -gt 0 ]; do
     local s=1
     local arg=
+    local val
+    local op
     case "$1" in
+      -no-*|--no-*)
+        s=1
+        arg="${1#*-no-}"
+        eval "op_${arg}=false"
+        arg="-$arg"
+        ;;
       --*|-*|--*=*|-*=*)
-        arg="${1#*-}"
-        val="${arg#*=}"
-        arg="${arg%%=*}"
-        if [[ "${template// +$arg /}" != "$template" ]]; then
+        op="${1#-}"
+        op="${op#-}"
+        val="${op#*=}"
+        if [[ "a$val" = "a$op" ]]; then
+          val=""
+        fi
+        arg="${op%%=*}"
+        if [[ "${template// h:$op /}" != "$template" ]]; then
+          # if option is help
+          dopsh-usage "$template"
+          eval "op_${arg}=true"
+          return 0
+        elif [[ "${template// H:$op /}" != "$template" ]]; then
+          # if option is help
+          dopsh-usage "$template"
+          eval "op_${arg}=true"
+          return 1
+        elif [[ "${template// -$arg /}" != "$template" ]]; then
+          # if option is boolean
           s=1
           : "${val:=true}"
           if [[ $val != true ]] && [[ $val != false ]]; then
-            echo "Expected true or valse for --$arg" >&2
+            echo "Expected true or false for --$arg" >&2
+            dopsh-usage "$template" >&2
             return 1
           fi
           eval "op_${arg}=$val"
-          arg="+$arg"
+          arg="-$arg"
         else
+          #else: option is not boolean, expect a value
           if [[ "${1%%=*}" != "$1" ]]; then
+            s=1
+          else
             val="$2"
             s=2
-          else
-            s=1
           fi
           eval "declare -a op_${arg}s"
           eval "op_${arg}s=(\"\${${arg}s[@]}\" \"\$val\")"
           eval "op_${arg}=\"\$val\""
-          arg="$arg="
+          arg="-$arg="
         fi
-        ;;
-      -no-*|--no-)
-        s=1
-        arg="${1#*no-}"
-        eval "op_${arg}=false"
-        arg="+$arg"
         ;;
       --)
         s=0
@@ -178,12 +225,13 @@ dopsh-parseopt(){
         break
         ;;
       *)
+        s=1
         opts=("${opts[@]}" "$1")
-        shift
         ;;
     esac
     if [[ -n "$arg" ]] && [[ "${template// $arg /}" = "$template" ]]; then
       echo "Unknown argument $1" >&2
+      dopsh-usage "$template" >&2
       return 1
     fi
     shift $s
@@ -191,38 +239,45 @@ dopsh-parseopt(){
   local op
   local n=1
   for op in $template; do
-    if [[ "${op#+}" != "$op" ]]; then
+    local op2="${op#-}"
+    if [[ "${op2%=}" != "$op2" ]]; then
       :
-    elif [[ "${op%=}" != "$op" ]]; then
-      :
-    elif [[ $n -gt "${#opts}" ]]; then
+    elif [[ "$op2" != "$op" ]]; then
+      eval ": \${op_$op2:=false}"
+    elif [[ "${op#h:}" != "$op" ]]; then
+      eval ": \${op_${op#h:}:=false}"
+    elif [[ "${op#H:}" != "$op" ]]; then
+      eval ": \${op_${op#h:}:=false}"
+    elif [[ $n -gt "${#opts[@]}" ]]; then
       echo "Missing argument $op" >&2
+      dopsh-usage "$template" >&2
       return 1
     else
-      eval "op_$op=\"\${opts[$n]}\""
+      eval "op_$op=\"\${opts[$n-1]}\""
+      let n=n+1
     fi
   done
 }
 
-DOPSH_STAMP=false
 redo-always-stamp(){
   redo-always
-  DOPSH_STAMP=true
+  local in=${1:-${DOPSH_ARGS[2]}}
+  if [ "a$in" = "a-" ]; then
+    redo-stamp
+  else
+    redo-stamp <"$in" 
+  fi
 }
 
-DOPSH_DO_FILE="$1"
+DOPSH_ARG0="$1"
 shift
+DOPSH_ARGS=("$@")
 
 (
   [ -n "$REDO_XTRACE" ] && set -x
   [ -n "$REDO_VERBOSE" ] && set -v
   set -e
-  source "$DOPSH_DO_FILE"
+  source "$DOPSH_ARG0"
 )
-res=$?
+exit $?
 
-if $DOPSH_STAMP; then
-  redo-stamp <"$3"
-fi
-
-exit $res
