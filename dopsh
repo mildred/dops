@@ -169,6 +169,12 @@ dopsh-parseopt(){
     local val
     local op
     case "$1" in
+      --)
+        s=0
+        shift
+        opts=("${opts[@]}" "$@")
+        break
+        ;;
       -no-*|--no-*)
         s=1
         arg="${1#*-no-}"
@@ -217,12 +223,6 @@ dopsh-parseopt(){
           eval "op_${arg}=\"\$val\""
           arg="-$arg="
         fi
-        ;;
-      --)
-        s=0
-        shift
-        opts=("${opts[@]}" "$@")
-        break
         ;;
       *)
         s=1
