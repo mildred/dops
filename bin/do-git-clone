@@ -1,64 +1,28 @@
-#!/bin/sh
+#!/bin/bash
 
-zero="$(basename "$0")"
-usage(){
-  cat <<EOF
-$zero [-b BRANCH] [-k KEYFILE] [-s STAMPFILE] URL [DIR]
-EOF
-}
+: ${DOPS_BIN_DIR:="$(dirname "$(readlink -f "$0")")"}
+: ${DOPS_DIR:="$(cd "$DOPS_BIN_DIR/.."; pwd)"}
 
-abs(){
-  (
-    cd "$(dirname "$1")"
-    echo "$PWD/$(basename "$1")"
-  )
-}
+. "$DOPS_DIR/dopsh_functions.sh"
 
-branch=HEAD
-keyfile=
-stampfile=
+dopsh-init "$0" "$@"
+dopsh-parseopt "H:help -b= --branch=branch -k= --key=sshkey -s= --stamp=stampfile -u= --user= url [dir]" "$@" || exit 1
 
-while [ $# -gt 0 ]; do
-  case "$1" in
-    -h|--help|help)
-      usage >&2
-      exit 1
-      ;;
-    -b)
-      branch="$2"
-      shift 2
-      ;;
-    -k)
-      keyfile="`abs "$2"`"
-      shift 2
-      ;;
-    -s)
-      stampfile="`abs "$2"`"
-      shift 2
-      ;;
-    --)
-      shift
-      break
-      ;;
-    *)
-      break
-      ;;
-  esac
-done
+dopsh-opt       branch HEAD b
+dopsh-opt -file key    ""   k
+dopsh-opt -file stamp  ""   s
+dopsh-opt       user   ""   u
+dopsh-opt -file dir    "$(basename "$op_url")"
 
-url="$1"
-dir="$2"
+wrapgitop=()
 
-: ${dir:="$(basename "$url")"}
-
-if [ -z "$url" ]; then
-  echo "Missing URL" >&2
-  exit 1
+if [ -n "$user" ]; then
+  wrapgitop=("${wrapgitop[@]}" sudo -u "$op_user")
 fi
 
-if [ -n "$keyfile" ]; then
-  if ! [ -e "$keyfile" ]; then
-    echo "$keyfile: not found" >&2
+if [ -n "$op_key" ]; then
+  if ! [ -e "$op_key" ]; then
+    echo "$op_key: not found" >&2
     exit 10
   fi
 
@@ -66,35 +30,35 @@ if [ -n "$keyfile" ]; then
     do-install-file /usr/bin/gem
     gem install git-ssh-wrapper
   fi
-
-  wrapgit(){
-    git-ssh-wrapper "$keyfile" git "$@"
-    return $?
-  }
-else
-  wrapgit(){
-    git "$@"
-    return $?
-  }
+  
+  wrapgitop=("${wrapgitop[@]}" git-ssh-wrapper "$op_key")
 fi
 
+wrapgit(){
+  "${wrapgitop[@]}" git "$@"
+}
+
+[ 1 = "$REDO_XTRACE" ] && set -x
 set -e
 
-if [ -e "$dir/.git" ]; then
-  cd "$dir"
-  set -x
-  wrapgit fetch "$url" "$branch"
+if [ -e "$op_dir/.git" ]; then
+  cd "$op_dir"
+  wrapgit fetch "$op_url" "$op_branch"
   wrapgit reset --hard FETCH_HEAD
   wrapgit submodule update --init --recursive --force
-elif [ -e "$dir" ]; then
-  echo "$dir: already exists" >&2
+elif [ -e "$op_dir" ]; then
+  echo "$op_dir: already exists" >&2
   exit 11
 else
-  wrapgit clone --recursive "$url" "$dir"
-  cd "$dir"
+  if [ HEAD != "$op_branch" ]; then
+    wrapgit clone --recursive -b "$op_branch" "$op_url" "$op_dir"
+  else
+    wrapgit clone --recursive "$op_url" "$op_dir"
+  fi
+  cd "$op_dir"
 fi
 
-if [ -n "$stampfile" ]; then
-  git rev-parse HEAD >"$stampfile"
+if [ -n "$op_stamp" ]; then
+  git rev-parse HEAD >"$op_stamp"
 fi
 

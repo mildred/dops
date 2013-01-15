@@ -112,11 +112,11 @@ What functions and executables come with the dopsh shell?
     `redo-always` with `redo-stamp` (put this after FILE which defaults to $3
     has been written)
 
-  - `do-record VAR DEFVAL VAL`
+  - `do-record [-q] VAR DEFVAL VAL`
 
-  - `do-recordf VAR DEFVAL FILE`
+  - `do-recordf [-q] VAR DEFVAL FILE`
 
-  - `do-recordc VAR DEFVAL`
+  - `do-recordc [-q] VAR DEFVAL`
 
 
 What tools do I have for provisionning?
