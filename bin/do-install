@@ -1,0 +1,341 @@
+#!/bin/bash
+
+: ${DOPS_BIN_DIR:="$(dirname "$(readlink -f "$0")")"}
+: ${DOPS_DIR:="$(cd "$DOPS_BIN_DIR/.."; pwd)"}
+
+. "$DOPS_DIR/dopsh_functions.sh"
+
+dopsh-init "$0" "$@"
+dopsh-parseopt "H:help --debug --any --all -g= --gem= -p= --package= -f= --file=" "$@" || exit 1
+
+dopsh-opt       any    ""
+dopsh-opt       all    ""
+
+if [[ -z "$op_any"  && -z "$op_all" ]]; then
+  op_any=false
+  op_all=true
+elif [[ -z "$op_any" ]]; then
+  op_all=$(not "$op_any")
+elif [[ -z "$op_all" ]]; then
+  op_any=$(not "$op_all")
+else
+  fail "--all and --any both specified"
+fi
+
+if $op_debug; then
+  debug(){
+    echo "$@" >&2
+  }
+else
+  debug(){
+    :
+  }
+fi
+
+req_gems=("${op_gs[@]}" "${op_gems[@]}")
+req_pkgs=("${op_ps[@]}" "${op_pkgs[@]}")
+req_files=("${op_fs[@]}" "${op_files[@]}")
+
+debug "Ask for files: ${req_files[@]}"
+debug "Ask for gems: ${req_gems[@]}"
+debug "Ask for packages: ${req_pkgs[@]}"
+
+fail_not_implemented(){
+  fail "$DOPSH_ARG0: Platform not supported ($1): $2"
+}
+
+apt_file_updated=false
+aptitude_updated=false
+
+install_pkgs(){
+  if has aptitude; then
+    if ! $aptitude_updated; then
+      aptitude update
+      aptitude_updated=true
+    fi
+    aptitude --no-gui -y install "$@" </dev/null
+    return $?
+  elif has yum; then
+    yum install -y "$@"
+    return $?
+  elif has pkcon; then
+    # Go to empty directory so package name cannot be confused with files
+    mkdir -p /tmp/pkcon-empty-$$
+    (
+      cd /tmp/pkcon-empty
+      pkcon -y install "$@" </dev/null
+    )
+    res=$?
+    rmdir /tmp/pkcon-empty-$$
+    return $res
+  else
+    fail_not_implemented install_pkgs "cannot install packages $@"
+  fi
+}
+
+exist_pkg(){
+  local pkg="$1"
+  if has aptitude; then
+    if ! $aptitude_updated; then
+      aptitude update
+      aptitude_updated=true
+    fi
+    aptitude show "$pkg" </dev/null >/dev/null 2>&1
+    return $?
+  elif has yum; then
+    yum info "$pkg" </dev/null >/dev/null 2>&1
+    return $?
+  else
+    fail_not_implemented exist_pkg "cannot find if $pkg is a valid package"
+  fi
+}
+
+install_file(){
+  if local pkg="$(pkg_for_file "$1")"; then
+    install_pkgs "$pkg"
+  else
+    return 1
+  fi
+}
+  
+install_gems(){
+  gem install "$@"
+}
+
+setup_gem(){
+  if ! has gem; then
+    install_file /usr/bin/gem || fail "Could not install ruby gems"
+  fi
+}
+
+setup_pkg(){
+  if has dpkg; then
+    if ! has aptitude; then
+      apt-get -y install aptitude </dev/null
+    fi
+    if has aptitude && ! has apt-file; then
+      aptitude --no-gui -y install apt-file
+    fi
+  fi
+}
+
+gem_list=""
+gem_list_uptodate=false
+
+has_gem(){
+  local res="$2"
+  setup_gem
+  if ! $gem_list_uptodate; then
+    gem_list="$(gem list)"
+    gem_list_uptodate=true
+  fi
+  cut -d' ' -f1 <<<"$gem_list" | fgrep -x "$res" >/dev/null
+  return $?
+}
+
+has_file(){
+  [[ -e "$res" ]]
+  return $?
+}
+
+has_pkg(){
+  setup_pkg
+  if has dpkg; then
+    dpkg -s "$p" </dev/null >/dev/null 2>&1
+    return $?
+  elif has rpm; then
+    rpm -q "$p" </dev/null >/dev/null 2>&1
+    return $?
+  else
+    fail_not_implemented has_package "cannot find if package $res is installed"
+  fi
+}
+
+pkg_for_gem(){
+  if exist_pkg "rubygem-$1"; then
+    echo "rubygem-$1"
+    return 0
+  elif exist_pkg "ruby-$1"; then
+    echo "ruby-$1"
+    return 0
+  elif exist_pkg "lib$1-ruby"; then
+    echo "lib$1-ruby"
+    return 0
+  else
+    return 1
+  fi
+}
+
+pkg_for_file(){
+  local pkg f="$1"
+  setup_pkg
+  if has apt-file; then
+    if ! $apt_file_updated; then
+      apt-file update
+      apt_file_updated=true
+    fi
+    pkg="$(apt-file --package-only -F search "$f" | sort | uniq)"
+  elif has pkcon; then
+    pkg="$( \
+      pkcon -y what-provides -p -y "$f" </dev/null \
+        | grep '^Available' \
+        | awk '{ print $2 }' \
+        | cut -d- -f1 \
+        | sort | uniq)"
+  else
+    fail_not_implemented pkg_for_file "cannot find package for file $f, please install PackageKit (pkcon)"
+  fi
+  if [[ -n "$pkg" ]]; then
+    echo "$pkg"
+    return 0
+  else
+    return 1
+  fi
+}
+
+###############################################################################
+# Check to see if resource is already installed
+###############################################################################
+
+# check resources
+# return variable has_all, has_any and num_req
+# fill variables req2_files, req2_gems and req2_pkgs
+# if --any, return early when has_any is true
+check_resources(){
+  has_all=true
+  has_any=false
+  num_req=0
+  
+  for f in "${req_files[@]}"; do
+    debug "Check file $f"
+    if has_file "$f"; then
+      debug "...exists"
+      has_any=true
+      $op_any && return 0
+    else
+      debug "...to be installed"
+      let num_req++
+      has_all=false
+      req2_files+=("$f")
+    fi
+  done
+
+  for g in "${req_gems[@]}"; do
+    debug "Check gem $g"
+    if has_gem "$g"; then
+      debug "...installed"
+      has_any=true
+      $op_any && return 0
+    else
+      debug "...to be installed"
+      let num_req++
+      has_all=false
+      req2_gems+=("$g")
+    fi
+  done
+
+  for p in "${req_pkgs[@]}"; do
+    debug "Check package $p"
+    if has_pkg "$p"; then
+      debug "...installed"
+      has_any=true
+      $op_any && return 0
+    else
+      debug "...to be installed"
+      let num_req++
+      has_all=false
+      req2_pkgs+=("$p")
+    fi
+  done
+
+  true
+}
+
+req2_files=()
+req2_gems=()
+req2_pkgs=()
+
+check_resources
+
+if $op_any && $has_any; then
+  exit 0
+elif $has_all; then
+  exit 0
+fi
+
+###############################################################################
+# Convert resources to installable packages
+###############################################################################
+
+req3_pkgs=()
+req3_gems=()
+
+for f in "${req2_files[@]}"; do
+  debug "Find package for file $f"
+  if p="$(pkg_for_file "$f")"; then
+    debug "...in package $p"
+    req3_pkgs+=("$p")
+  elif $op_all; then
+    fail "Could not find package for $f"
+  fi
+done
+
+for g in "${req2_gems[@]}"; do
+  debug "Find package for gem $g"
+  if p="$(pkg_for_gem "$g")"; then
+    debug "...in package $p"
+    req3_pkgs+=("$p")
+  else
+    debug "...install using rubygems"
+    req3_gems+=("$g")
+  fi
+done
+
+for p in "${req2_pkgs[@]}"; do
+  debug "Find package for package $p"
+  if exist_pkg "$p"; then
+    debug "...exists"
+    req3_pkgs+=("$p")
+  elif $op_all; then
+    fail "Could not find package $p"
+  fi
+done
+
+###############################################################################
+# Install resources (and exit for --all)
+###############################################################################
+
+res=0
+
+if [[ ${#req3_gems[@]} -gt 0 ]]; then
+  debug "Install gems: ${req3_gems[@]}"
+  if ! install_gems "${req3_gems[@]}"; then
+    $op_all && warn "Could not install all of gems: ${req3_gems[@]}"
+    res=1
+  fi
+fi
+
+if [[ ${#req3_pkgs[@]} -gt 0 ]]; then
+  debug "Install packages: ${req3_pkgs[@]}"
+  if ! install_pkgs "${req3_pkgs[@]}"; then
+    $op_all && warn "Could not install all of packages: ${req3_pkgs[@]}"
+    res=1
+  fi
+fi
+
+$op_all && exit $res
+
+###############################################################################
+# Check resource is installed (--any only)
+###############################################################################
+
+check_resources
+if $op_any && $has_any; then
+  exit 0
+else
+  warn "Could not install any of:"
+  warn "  gems: ${req3_gems[@]}"
+  warn "  packages: ${req3_pkgs[@]}"
+  exit 1
+fi
+

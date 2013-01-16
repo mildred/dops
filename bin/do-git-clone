@@ -15,23 +15,31 @@ dopsh-opt       user   ""   u
 dopsh-opt -file dir    "$(basename "$op_url")"
 
 wrapgitop=()
+deploy_key="$op_key"
 
-if [ -n "$user" ]; then
-  wrapgitop=("${wrapgitop[@]}" sudo -u "$op_user")
-fi
-
-if [ -n "$op_key" ]; then
-  if ! [ -e "$op_key" ]; then
-    echo "$op_key: not found" >&2
+if [ -n "$deploy_key" ]; then
+  if ! [ -e "$deploy_key" ]; then
+    echo "$deploy_key: not found" >&2
     exit 10
   fi
+fi
 
+if [ -n "$op_user" ]; then
+  wrapgitop+=(sudo -u "$op_user")
+  if [ -n "$op_key" ]; then
+    deploy_key=$(tempfile) || exit 1
+    trap "rm -f -- '$deploy_key'" EXIT
+    cp "$op_key" "$deploy_key"
+    chown "$op_user" "$deploy_key"
+  fi
+fi
+
+if [ -n "$deploy_key" ]; then
   if ! which git-ssh-wrapper >/dev/null 2>&1; then
-    do-install-file /usr/bin/gem
-    gem install git-ssh-wrapper
+    do-install --gem=git-ssh-wrapper
   fi
   
-  wrapgitop=("${wrapgitop[@]}" git-ssh-wrapper "$op_key")
+  wrapgitop+=(git-ssh-wrapper "$deploy_key")
 fi
 
 wrapgit(){

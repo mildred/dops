@@ -67,6 +67,14 @@ shquote(){
 	printf "'"
 }
 
+not(){
+  if [[ $1 == true ]]; then
+    echo false
+  elif [[ $1 == false ]]; then
+    echo true
+  fi
+}
+
 redo-cat(){
   redo-ifchange "$@"
   cat "$@"
@@ -363,22 +371,22 @@ dopsh-parseopt(){
   opts=()
   for op in $template; do
     if _dopsh-opt-isopstr "$op"; then
-      unset op_$opname
-      eval "op_${opname}s=()"
+      unset op_${opname//-/_}
+      eval "op_${opname//-/_}s=()"
     elif _dopsh-opt-isopbool "$op"; then
-      unset op_$opname
-      eval "op_${opname}s=()"
+      unset op_${opname//-/_}
+      eval "op_${opname//-/_}s=()"
     elif _dopsh-opt-isophelp "$op"; then
-      unset op_$opname
-      eval "op_${opname}s=()"
+      unset op_${opname//-/_}
+      eval "op_${opname//-/_}s=()"
     elif _dopsh-opt-isoptlist "$op"; then
-      eval "op_${opname}s=()"
+      eval "op_${opname//-/_}s=()"
     elif _dopsh-opt-isoptarg "$op"; then
-      eval "op_${opname}=()"
+      eval "op_${opname//-/_}=()"
     elif _dopsh-opt-islist "$op"; then
-      eval "op_${opname}s=()"
+      eval "op_${opname//-/_}s=()"
     else
-      unset op_$op
+      unset op_${op//-/_}
     fi
   done
   while [ $# -gt 0 ]; do
@@ -408,8 +416,8 @@ dopsh-parseopt(){
           opts=("${opts[@]}" "$1")
         fi
         if [[ -n "$opname" ]]; then
-          eval "declare -a op_${opname//-/_}s"
-          eval "op_${opname//-/_}s=(\"\${${opname}s[@]}\" \"\$opval\")"
+          #eval "declare -a op_${opname//-/_}s" # declare -a makes it local
+          eval "op_${opname//-/_}s+=(\"\$opval\")"
           eval "op_${opname//-/_}=\"\$opval\""
         fi
         shift
