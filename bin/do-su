@@ -1,0 +1,45 @@
+#!/bin/sh
+
+USER="$1" # override USER variable
+shift
+
+has(){
+  which "$@" >/dev/null 2>&1
+}
+
+shquote(){
+	local HEAD TAIL="$*"
+	printf "'"
+
+	while [ -n "$TAIL" ]; do
+		HEAD="${TAIL%%\'*}"
+
+		if [ "$HEAD" = "$TAIL" ]; then
+			printf "%s" "$TAIL"
+			break
+		fi
+
+		printf "%s'\"'\"'" "$HEAD"
+
+		TAIL="${TAIL#*\'}"
+	done
+
+	printf "'"
+}
+
+
+if has setuidgid; then
+  exec setuidgid "$USER" "$@"
+elif has sudo; then
+  exec sudo -E -n -u "$USER" "$@"
+elif [ "$(id -u)" -eq 0 ] && has su; then
+  command=""
+  for arg in "$@"; do
+    command="$command $(shquote "$c")"
+  done
+  exec su --preserve-environment -c "$command" "$USER"
+else
+  echo "$0: cannot run as $USER without setuidgid, sudo, or su as root"
+  exit 1
+fi
+

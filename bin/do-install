@@ -8,6 +8,7 @@
 dopsh-init "$0" "$@"
 dopsh-parseopt "H:help --debug --any --all -g= --gem= -p= --package= -f= --file=" "$@" || exit 1
 
+dopsh-opt       debug  false
 dopsh-opt       any    ""
 dopsh-opt       all    ""
 
@@ -134,8 +135,7 @@ has_gem(){
 }
 
 has_file(){
-  [[ -e "$res" ]]
-  return $?
+  [[ -e "$1" ]]
 }
 
 has_pkg(){

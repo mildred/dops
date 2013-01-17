@@ -80,15 +80,13 @@ configure(){
   fi
   cat >"$GIT_DIR/hooks/post-update" <<"EOF"
     run_provisioning(){
-      umask 0066
       unset GIT_DIR
       export LC_ALL=C
       cd ..
-      # Git leaks file descriptors, attempt to close them
-      exec 3>&- 3>&- 5>&- 6>&- 7>&- 8>&- 9>&-
 
       echo "Provisionning in $PWD:"
       ( set -x
+        umask 0066
         git reset --hard HEAD
         git submodule update --init --no-fetch --recursive --force --reference "$PWD"
       )
@@ -97,6 +95,7 @@ configure(){
       t="$(tempfile)" || exit
       trap "rm -f -- '$t'" EXIT
       ( set -x
+        umask 002
         redo --color provision >"$t" 2>&1 </dev/null
       ) &
       tail -n 0 --pid $! -f "$t"
