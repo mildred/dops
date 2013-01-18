@@ -16,6 +16,8 @@ different things you want to provision, and call them from the master
 How to bootstrap a node?
 ========================
 
+## From SSH Access
+
 You need ssh access on the remote node. Then on the provisionning repository
 and assuming the dops submodule is located in `dops`, run:
 
@@ -35,6 +37,16 @@ ready for provisionning. Not it is better to have a public key authentication.
 Example of command:
 
     dops/bootstrap-ssh.sh staging root@staging.example.net /root/provisionning
+
+## Manually
+
+Get the repository on the machine in any way possible, and get a shell. On the
+repository, put the node id in `$GIT_DIR/info/dops_node_id`. Install Git and
+redo, then run in the repository:
+
+    redo provision
+
+You can look at the file `bootstrap-host.sh` for more guidance.
 
 
 How to provision a node from my developpment machine?
@@ -58,6 +70,72 @@ and run:
     redo provision
 
 
+How to organize the provisionning repository
+============================================
+
+The repository is organized in directories, and there are three kinds of them:
+
+- The `dops` submodule: Contains dopsh and other useful things documented below
+
+- Recipe directories (they can be submodule also): these contain `.do` files
+  used to declare how to provision the resource. The `provision.do` is by
+  convention the default entry point, although there is no code envorcing that.
+  
+  Look at the redo documentation for more information on how to write these
+  `.do` files. To briefly explain it, they are shell scripts, with specials
+  commands enabled (through the `$PATH`) to declare dependencies between
+  recipes.
+
+- The `conf` directory containing the specific configuration to your
+  provisionning. No distinction is made on specific configuration for a node,
+  and configuration for the whole provisionning repository. Recipes are
+  expected to choose configuration keys depending on `$DOPS_NODE_ID` when
+  appropriate.
+
+
+How to write a recipe
+=====================
+
+Create a directory for this recipe, and create the `provision.do` file
+containing as first line:
+
+    #!.../dopsh
+    redo-source config
+
+This will tell redo to use the `dopsh` shell. It is a bash shell with
+additional environment variables and functions. It also tell to source the
+result of the `config.do` recipe.
+
+Create a `config.do` file containing the configuration, looking like:
+
+    #!.../dopsh
+    exec >$3 # redirects the stdout to the result of this recipe
+    
+    do-recordc varname defaultval
+    do-recordc varname defaultval
+    ...
+
+This will create a `config` file (the file that is going to be sourced)
+containing the variables you declared. The file `$DOPS_MYCONF/$varname` will
+be looked, and if the file exists, its content will replace the default value
+for the variable.
+
+If you want to provide tools to other recipes, you can use shell scripts to do
+so. Look for example at the apache2 recipe, that include an `enable-site` tool.
+For the shell scripts, you can use the following template:
+
+    #!/usr/bin/env dopsh
+    # (dopsh in in PATH)
+    
+    dopsh-init "$0" "$@"
+    dopsh-parseopt "H:help --op1 --op2=" "$@" || exit 1
+
+`dopsh-init` will put you in the same directory as the script, and will set
+`DOPSH_CALL_DIR` to the old current directory. Then, `dopsh-parseopt` will
+parse options given to the script. Look at the files in the `bin` directory for
+more information on how to use these functions.
+
+
 What environment variables can I use with the dopsh shell?
 ==========================================================
 
@@ -65,11 +143,18 @@ What environment variables can I use with the dopsh shell?
     Location of the dops directory
 
   - `DOPS_ROOT`:
-    Location of the provisionning repository (`DOPS_DIR/..`)
+    Location of the provisionning repository (`$DOPS_DIR/..`)
 
   - `DOPS_CONF`:
     Location of the configuration directory for your provisionning
-    (`DOPS_ROOT/conf`)
+    (`$DOPS_ROOT/conf`)
+
+  - `DOPS_MYCONF`:
+    Location of the configuration directory for your recipe
+    (`$DOPS_CONF/$(dirname $PWD)`)
+
+  - `DOPS_NODE_ID`:
+    Node ID, set up during bootstrap.
 
 
 What is dopsh?
@@ -119,11 +204,16 @@ What functions and executables come with the dopsh shell?
   - `do-recordc [-q] VAR DEFVAL`
 
 
+The source of these functions is in `dopsh_functions.sh`.
+
 What tools do I have for provisionning?
 =======================================
 
-  - `do-install-file`:
+  - `do-install`:
     Declare wanted files or packages
+
+  - `do-install-file`:
+    Declare wanted files or packages (deprecated by `do-install`)
 
   - `do-passwd`:
     Declare system users
