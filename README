@@ -41,12 +41,20 @@ Example of command:
 ## Manually
 
 Get the repository on the machine in any way possible, and get a shell. On the
-repository, put the node id in `$GIT_DIR/info/dops_node_id`. Install Git and
-redo, then run in the repository:
+repository, put the node id in `$GIT_DIR/info/dops_node_id`.
+
+To bootstrap the base dependencies, run:
+
+    dops/bootstrap-self.sh
+
+Then, run the provisionning by executing:
 
     redo provision
 
-You can look at the file `bootstrap-host.sh` for more guidance.
+You can run the two steps at once by giving the `bootstrap-self.sh` as argument
+the path to the provisionning directory, it will then automatically run redo in
+it. To use another target than `provision`, you can specify it on the command
+line after the provisionning directory.
 
 
 How to provision a node from my developpment machine?

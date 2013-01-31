@@ -6,6 +6,9 @@ warn(){
   echo "$@" >&2
 }
 
+pkgs_deb="$pkgs_deb python-markdown python-beautifulsoup"
+pkgs_rpm="$pkgs_rpm python-markdown python-BeautifulSoup"
+
 if has aptitude; then
   ok=true
   for pkg in $pkgs_deb; do
