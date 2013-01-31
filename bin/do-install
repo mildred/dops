@@ -41,6 +41,8 @@ debug "Ask for files: ${req_files[@]}"
 debug "Ask for gems: ${req_gems[@]}"
 debug "Ask for packages: ${req_pkgs[@]}"
 
+export DEBIAN_FRONTEND=noninteractive
+
 fail_not_implemented(){
   fail "$DOPSH_ARG0: Platform not supported ($1): $2"
 }

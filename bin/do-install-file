@@ -55,6 +55,8 @@ done
 
 pkgs=()
 
+export DEBIAN_FRONTEND=noninteractive
+
 when_not_found(){
   if [ $mode = and ]; then
     warn "$1: package not found"
