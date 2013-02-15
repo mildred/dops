@@ -3,7 +3,8 @@ How to Create a Provisionning Repository?
 
 - Create a git repository with dops as a git submodule.
 - link the dops shell in: `ln -s dops/dopsh .`
-- reate a redo `provision.do` script that does the provisionning job
+- Create a redo `provision.do` script that does the provisionning job
+- Create a `conf` directory containing the configuration for your recipes
 
 Your redo scripts are encouraged to start with `#!.../dopsh` to enable the dops
 shell, that shell contain many useful [documented features](README.DOPSH)
