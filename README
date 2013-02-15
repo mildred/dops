@@ -41,11 +41,12 @@ Example of command:
 ## Manually
 
 Get the repository on the machine in any way possible, and get a shell. On the
-repository, put the node id in `$GIT_DIR/info/dops_node_id`.
+repository, put the node id in `$GIT_DIR/info/dops_node_id` (or specify it in
+the `-n` option in `bootstrap-self.sh`).
 
 To bootstrap the base dependencies, run:
 
-    dops/bootstrap-self.sh
+    dops/bootstrap-self.sh [-n NODE_ID]
 
 Then, run the provisionning by executing:
 
@@ -229,3 +230,20 @@ What tools do I have for provisionning?
   - `do-git-clone REPO PATH`:
     Clone or update repository
 
+
+How can I configure Vagrant for provisionning with dops?
+========================================================
+
+You need to have the provisionning as a shared folder. Then set the
+provisionning command to `dops/bootstrap-self.sh`. For example:
+
+    config.vm.share_folder "v-data", "/provisionning", "."
+    config.vm.provision :shell, :inline => "/provisionning/dops/bootstrap-self.sh /provisionning"
+
+There is an issue with redo on virtual folders. Redo store the inode number of
+the files it generates, and if the inode number changes, then it thinks the file
+has been modified manually, and refuses by default to overwrite files. Because
+virtual volders involves a virtual file system with brand new inodes, redo
+doesn't work well if invoked from both the host and the guest.
+
+Basically, you should only call redo from within the virtual machine.

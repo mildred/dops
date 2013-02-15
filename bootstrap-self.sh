@@ -6,15 +6,20 @@
 zero="$(basename "$0")"
 self_dir="$(cd "$(dirname "$0")"; echo "$PWD")"
 usage(){
-    echo "Usage: $zero [-h] [--] [PROVISIONNING_DIRECTORY [REDO_ARGS...]]" >&2
+    echo "Usage: $zero [-h] [-n NODE_ID] [--] [PROVISIONNING_DIRECTORY [REDO_ARGS...]]" >&2
     exit 1
 }
 
 run_redo=true
+node_id=
 while true; do
   case "$1" in
     -h|--help|-help)
       usage
+      ;;
+    -n)
+      node_id="$2"
+      shift 2
       ;;
     --)
       shift
@@ -34,9 +39,22 @@ fi
 
 ver=20130108
 
-if ! [ -s "$PWD/.git/info/dops_node_id" ]; then
-    echo "Missing node_id in $PWD/.git/info/dops_node_id"
+node_id_file="$PWD/.git/info/dops_node_id"
+if ! [ -s "$node_id_file" ]; then
+    echo "Missing node_id in $node_id_file" >&2
+    if [ -n "$node_id" ]; then
+      echo "Using provided node_id: $node_id" >&2
+      echo "$node_id" >"$node_id_file"
+    else
+      exit 1
+    fi
+elif [ -n "$node_id" ]; then
+  actual_node_id="$(cat "$node_id_file")"
+  if [ "x$actual_node_id" != "x$node_id" ]; then
+    echo "$node_id_file: $actual_node_id" >&2
+    echo "Mismatched with provided node_id: $node_id" >&2
     exit 1
+  fi
 fi
 
 pkgs_deb="git-core python-setproctitle"
