@@ -6,8 +6,15 @@ warn(){
   echo "$@" >&2
 }
 
+export DEBIAN_FRONTEND=noninteractive
+
+# necessary for redo
 pkgs_deb="$pkgs_deb python-markdown python-beautifulsoup"
 pkgs_rpm="$pkgs_rpm python-markdown python-BeautifulSoup"
+
+if has apt-get && ! has aptitude; then
+  apt-get -y install aptitude
+fi
 
 if has aptitude; then
   ok=true
@@ -34,7 +41,7 @@ elif has yum; then
     yum install -y $pkgs_rpm
   fi
 else
-  echo "Bootstrapping failed: cannot install base packages on unknown system"
+  echo "Bootstrapping error: cannot install base packages on unknown system"
 fi
 
 if ! has redo; then

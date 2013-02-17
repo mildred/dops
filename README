@@ -238,7 +238,7 @@ How can I configure Vagrant for provisionning with dops?
 You need to have the provisionning as a shared folder. Then set the
 provisionning command to `dops/bootstrap-self.sh`. For example:
 
-    config.vm.share_folder "v-data", "/provisionning", "."
+    config.vm.share_folder "v-dops", "/provisionning", "."
     config.vm.provision :shell, :inline => "/provisionning/dops/bootstrap-self.sh /provisionning"
 
 There is an issue with redo on virtual folders. Redo store the inode number of

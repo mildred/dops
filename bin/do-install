@@ -78,6 +78,7 @@ install_pkgs(){
 
 exist_pkg(){
   local pkg="$1"
+  setup_pkg
   if has aptitude; then
     if ! $aptitude_updated; then
       aptitude update

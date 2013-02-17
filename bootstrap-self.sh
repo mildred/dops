@@ -67,7 +67,7 @@ expect_bin="git redo"
 $failed && return 1
 
 if $run_redo; then
-    echo "==> Provisionning"
+    echo "==> Provisionning in $PWD"
     if [ $# -eq 0 ]; then
         exec redo provision
     else
