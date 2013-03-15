@@ -30,12 +30,12 @@ shquote(){
 
 if has setuidgid; then
   exec setuidgid "$USER" "$@"
-elif has sudo; then
+elif has sudo && tty >/dev/null 2>&1; then
   exec sudo -E -n -u "$USER" "$@"
 elif [ "$(id -u)" -eq 0 ] && has su; then
   command=""
   for arg in "$@"; do
-    command="$command $(shquote "$c")"
+    command="$command $(shquote "$arg")"
   done
   exec su --preserve-environment -c "$command" "$USER"
 else

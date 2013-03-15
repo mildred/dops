@@ -41,8 +41,9 @@ shift
 : ${node_id:="$remote"}
 
 if [ $# -ge 1 ]; then
-  host="$2"
-  dir="$3"
+  host="$1"
+  dir="$2"
+  shift 2
   create_remote=true
 else
   url="$(git config "remote.$remote.url")"

@@ -76,6 +76,14 @@ export SCRIPT_COMMIT_UNTRACKED='
   cd "$path"
   git update-ref HEAD_UNTRACKED HEAD
 '
+export SCRIPT_COMMIT_MERGE='
+  git submodule foreach --quiet "$SCRIPT_COMMIT_MERGE"
+  ( set -x
+    cd "$toplevel"
+    git fetch "$path" HEAD
+    git merge --no-edit -m "Merge submodule $path" -s ours FETCH_HEAD
+  )
+'
 
 warning(){
   echo "WARNING: git-commit-push could not finish" >&2
@@ -103,10 +111,11 @@ trap warning INT
     git submodule foreach --quiet --recursive "$GIT_ADD"
   fi
 
-  export COMMIT_MESSAGE="untracked changes"
   git submodule foreach --quiet "$SCRIPT_COMMIT_UNTRACKED"
   (set -x; git commit --allow-empty -m "untracked changes")
   git update-ref HEAD_UNTRACKED HEAD
+
+  git submodule foreach --quiet "$SCRIPT_COMMIT_MERGE"
 ) >/dev/null 2>&1
 
 echo " $(git rev-parse HEAD) . ($(git describe --all HEAD))"

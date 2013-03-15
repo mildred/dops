@@ -184,7 +184,9 @@ _dopsh-opt-isopstr(){
   op2="${op#-}"
   op2="${op2#-}"
   op3="${op2%%=*}"
-  if [[ -n "$template" ]] && [[ ( "${template// -$op3=/}" != "$template" ) || ( "${template// --$op3=/}" != "$template" ) ]]; then
+  local template2="${template// -$op3=/}"
+  template2="${template2// --$op3=/}"
+  if [[ -n "$template" ]] && [[ "$template2" != "$template" ]]; then
     opname="$op3"
     if [[ "a$op2" != "a$op3" ]]; then
       opval="${op2#*=}"
@@ -214,8 +216,10 @@ _dopsh-opt-isopbool(){
   op2="${op#-}"
   op2="${op2#-}"
   op3="${op2%%=*}"
-  op4="${op4#no-}"
-  if [[ -n "$template" ]] && [[ "${template// -$op4 /}" != "$template" ]]; then
+  op4="${op3#no-}"
+  local template2="${template// -$op4 /}"
+  template2="${template2// --$op4 /}"
+  if [[ -n "$template" ]] && [[ "$template2" != "$template" ]]; then
     if [[ "a$op2" != "a$op3" ]]; then
       opname="$op3"
       opval="${op2%*=}"
@@ -228,7 +232,7 @@ _dopsh-opt-isopbool(){
       fi
     else
       opname="$op4"
-      if [[ "a$op3" != "a$op4" ]]; then
+      if [[ "a$op3" = "a$op4" ]]; then
         opval=true
       else
         opval=false

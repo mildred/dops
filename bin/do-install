@@ -12,13 +12,16 @@ dopsh-opt       debug  false
 dopsh-opt       any    ""
 dopsh-opt       all    ""
 
+echo op_any $op_any
+echo op_all $op_all
+
 if [[ -z "$op_any"  && -z "$op_all" ]]; then
   op_any=false
   op_all=true
 elif [[ -z "$op_any" ]]; then
-  op_all=$(not "$op_any")
-elif [[ -z "$op_all" ]]; then
   op_any=$(not "$op_all")
+elif [[ -z "$op_all" ]]; then
+  op_all=$(not "$op_any")
 else
   fail "--all and --any both specified"
 fi
@@ -178,6 +181,8 @@ pkg_for_file(){
       apt_file_updated=true
     fi
     pkg="$(apt-file --package-only -F search "$f" | sort | uniq)"
+  elif has yum; then
+    pkg="$(yum whatprovides "$f" | sed -r -e ' /^$/,/^.+$/ {s/^(.+)-[^-]*-[^-]* : .*/\1/p}; d' | sort | uniq)"
   elif has pkcon; then
     pkg="$( \
       pkcon -y what-provides -p -y "$f" </dev/null \
