@@ -70,6 +70,14 @@ The bootstrap should also have created a git alias `git cipush` that pushes a
 temporary commit that includes the staging area. It is useful to provision a
 work in progress without creating a commit. See `git cipush -h`
 
+To setup the `cipush` alias, run
+
+    dops/setup-git.sh
+
+The most useful way to use `cipush` is:
+
+    git cipush [-a] REMOTE HEAD
+
 
 How to provision from the remote node?
 ======================================

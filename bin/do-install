@@ -12,9 +12,6 @@ dopsh-opt       debug  false
 dopsh-opt       any    ""
 dopsh-opt       all    ""
 
-echo op_any $op_any
-echo op_all $op_all
-
 if [[ -z "$op_any"  && -z "$op_all" ]]; then
   op_any=false
   op_all=true

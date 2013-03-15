@@ -91,12 +91,6 @@ warning(){
   echo "WARNING: to the staging area and the untracked changes" >&2
 }
 
-error(){
-  echo "ERROR: git-commit-push was interrupted in a delicate process" >&2
-  echo "ERROR: Your tags may have disappeared. They are recoverable in" >&2
-  echo "ERROR: refs/cipush-submodules-saved-tags/" >&2
-}
-
 trap warning INT
 
 (
@@ -121,13 +115,7 @@ trap warning INT
 echo " $(git rev-parse HEAD) . ($(git describe --all HEAD))"
 git submodule status --recursive
 
-cleanupall(){
-  cleanup1
-  cleanup2
-}
-
-cleanup1(){
-  echo "Clean up submodules..." >&2
+echo "Clean up submodules..." >&2
 (
   git submodule foreach --recursive --quiet \
     '
@@ -150,9 +138,9 @@ cleanup1(){
     git update-ref -d HEAD_OLD
     '
 ) >/dev/null 2>&1
-}
+echo ok
 
-cleanup2(){
+cleanup(){
   echo "Clean up master repository..." >&2
 (
   (set -x; git reset --mixed HEAD_UNTRACKED^)
@@ -164,28 +152,10 @@ cleanup2(){
   trap : INT
 }
 
-trap error INT
-
-mv "$GIT_DIR/refs/tags" "$GIT_DIR/refs/cipush-submodules-saved-tags" || exit 1
-git submodule foreach --recursive --quiet \
-  '
-  modpath="$toplevel/$path"
-  modpath="${modpath#$GIT_CIPUSH_TOPLEVEL/}"
-  git push "$GIT_CIPUSH_TOPLEVEL" "+HEAD_UNTRACKED:refs/tags/submodules/$modpath/HEAD_UNTRACKED" >/dev/null 2>&1
-  '
-if [ -n "$GIT_PUSH_REPO" ]; then
-  ( set -x; git push -f --tags "$GIT_PUSH_REPO" )
-else
-  ( set -x; git push -f --tags )
-fi
-rm -rf "$GIT_DIR/refs/tags"
-mv "$GIT_DIR/refs/cipush-submodules-saved-tags" "$GIT_DIR/refs/tags"
-
-trap cleanupall INT
-cleanup1
+trap cleanup INT
 
 ( set -x; git push -f "${GIT_PUSH_OPTS[@]}" "$@" )
 
-cleanup2
+cleanup
 
 
