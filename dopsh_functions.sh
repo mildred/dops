@@ -155,6 +155,10 @@ do-recordc(){
   do-recordf $quiet "$1" "$2" "${DOPS_MYCONF:-"$DOPS_CONF/$(basename "$PWD")"}/$1"
 }
 
+do-getconf(){
+  do-recordc -q "$@"
+}
+
 dopsh-init(){
   DOPSH_CALL_DIR="$PWD"
   if [ -z "$DOPSH_ARG0" ]; then
