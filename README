@@ -223,6 +223,9 @@ What functions and executables come with the dopsh shell?
 
   - `do-getconf VAR DEFVAL` is an alias for `do-recordc -q`
 
+  - `do-provision MODULE1 MODULE2`:
+    Equivalent to `redo MODULE1/provision MODULE2/provision`
+
 
 The source of these functions is in `dopsh_functions.sh`.
 
@@ -240,7 +243,6 @@ What tools do I have for provisionning?
 
   - `do-git-clone REPO PATH`:
     Clone or update repository
-
 
 How can I configure Vagrant for provisionning with dops?
 ========================================================

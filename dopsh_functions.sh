@@ -159,6 +159,14 @@ do-getconf(){
   do-recordc -q "$@"
 }
 
+do-provision(){
+  local elems=()
+  for elem in "$@"; do
+    elems=("${elems[@]}" "$elem/provision")
+  done
+  redo "${elems[@]}"
+}
+
 dopsh-init(){
   DOPSH_CALL_DIR="$PWD"
   if [ -z "$DOPSH_ARG0" ]; then
