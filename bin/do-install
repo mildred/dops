@@ -274,14 +274,18 @@ fi
 
 req3_pkgs=()
 req3_gems=()
+req3_files=()
 
 for f in "${req2_files[@]}"; do
   debug "Find package for file $f"
   if p="$(pkg_for_file "$f")"; then
     debug "...in package $p"
     req3_pkgs+=("$p")
-  elif $op_all; then
-    fail "Could not find package for $f"
+  else
+    req3_files+=("$f")
+    if $op_all; then
+      fail "Could not find package for $f"
+    fi
   fi
 done
 
@@ -338,9 +342,16 @@ check_resources
 if $op_any && $has_any; then
   exit 0
 else
-  warn "Could not install any of:"
-  warn "  gems: ${req3_gems[@]}"
-  warn "  packages: ${req3_pkgs[@]}"
+  warn "Could not install:"
+  if [ ${#req3_gems[@]} -gt 0 ]; then
+    warn "  gems: ${req3_gems[@]}"
+  fi
+  if [ ${#req3_pkgs[@]} -gt 0 ]; then
+    warn "  packages: ${req3_pkgs[@]}"
+  fi
+  if [ ${#req3_files[@]} -gt 0 ]; then
+    warn "  files: ${req3_files[@]}"
+  fi
   exit 1
 fi
 

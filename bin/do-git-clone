@@ -6,13 +6,16 @@
 . "$DOPS_DIR/dopsh_functions.sh"
 
 dopsh-init "$0" "$@"
-dopsh-parseopt "H:help -b= --branch=branch -k= --key=sshkey -s= --stamp=stampfile -u= --user= url [dir]" "$@" || exit 1
+dopsh-parseopt "H:help -b= --branch=branch -k= --key=sshkey -s= --stamp=stampfile -u= --user= --fail-unchanged url [dir]" "$@" || exit 1
 
-dopsh-opt       branch HEAD b
-dopsh-opt -file key    ""   k
-dopsh-opt -file stamp  ""   s
-dopsh-opt       user   ""   u
-dopsh-opt -file dir    "$(basename "$op_url")"
+dopsh-opt       branch         HEAD  b
+dopsh-opt       fail_unchanged false
+dopsh-opt -file key            ""    k
+dopsh-opt -file stamp          ""    s
+dopsh-opt       user           ""    u
+dopsh-opt -file dir            "$(basename "$op_url")"
+
+exitcode=0
 
 wrapgitop=()
 deploy_key="$op_key"
@@ -52,8 +55,12 @@ set -e
 if [ -e "$op_dir/.git" ]; then
   cd "$op_dir"
   wrapgit fetch "$op_url" "$op_branch"
-  wrapgit reset --hard FETCH_HEAD
-  wrapgit submodule update --init --recursive --force
+  if $op_fail_unchanged && [ "$(git rev-parse HEAD)" = "$(git rev-parse FETCH_HEAD)" ]; then
+    exitcode=1
+  else
+    wrapgit reset --hard FETCH_HEAD
+    wrapgit submodule update --init --recursive --force
+  fi
 elif [ -e "$op_dir" ]; then
   echo "$op_dir: already exists" >&2
   exit 11
@@ -70,3 +77,4 @@ if [ -n "$op_stamp" ]; then
   git rev-parse HEAD >"$op_stamp"
 fi
 
+exit $exitcode
