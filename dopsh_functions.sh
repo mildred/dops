@@ -111,6 +111,16 @@ redo-source-cat(){
 	done
 }
 
+redo-always-stamp(){
+  redo-always
+  local in=${1:-$(abspath "${DOPSH_ARGS[2]}" "$DOPSH_CALL_DIR")}
+  if [ "a$in" = "a-" ]; then
+    redo-stamp
+  else
+    redo-stamp <"$in" 
+  fi
+}
+
 # do-record var default-val val
 do-record(){
   local quiet=false
@@ -157,6 +167,50 @@ do-recordc(){
 
 do-getconf(){
   do-recordc -q "$@"
+}
+
+do-conf(){
+  local op_v op_vs op_var op_argspecs opts DOPSH_PREARGS
+  local op_shell=false op_s=false
+  local extra_help="argspec can either be:
+  f=FILE  to take the argument from the given file
+  v=VALUE to use the value if not empty
+  c=FILE  to search for a  file in DOPS_MYCONF
+  C=FILE  to search for a  file in DOPS_CONF"
+  dopsh-parseopt "H:help --shell -s var [argspec...]" "$@" || return 1
+  local argspec specf specv specc speccc value=
+  for argspec in "${op_argspecs[@]}"; do
+    specf="${argspec#f=}"
+    specv="${argspec#v=}"
+    specc="${argspec#c=}"
+    speccc="${argspec#C=}"
+    if [ "a$argspec" != "a$specv" ]; then
+      : ${value:="$specv"}
+    elif [ "a$argspec" != "a$specf" ]; then
+      if [ -z "$value" ]; then
+        value="$(redo-catx "$specf")"
+      fi
+    elif [ "a$argspec" != "a$specc" ]; then
+      if [ -z "$value" ]; then
+        value="$(redo-catx "${DOPS_MYCONF:-"$DOPS_CONF/$(basename "$PWD")"}/$specc")"
+      fi
+    elif [ "a$argspec" != "a$speccc" ]; then
+      if [ -z "$value" ]; then
+        value="$(redo-catx "$DOPS_CONF/$speccc")"
+      fi
+    else
+      fail "invalid argspec: $argspec"
+      return 1
+    fi
+  done
+  if [ "a$op_var" = a- ]; then
+    printf %s "$value"
+  else
+    eval "$op_var=\"\$value\""
+    if $op_shell || $op_s; then
+      printf "%s\n" "$1=$(shquote "$value")"
+    fi
+  fi
 }
 
 do-provision(){
@@ -379,10 +433,33 @@ dopsh-usage(){
     done
     echo " (show this help)"
   fi
+  if [ -n "$extra_help" ]; then
+    echo
+    echo "$extra_help"
+    echo
+  fi
 }
 
+# Usage: dopsh-parseopt template "$@"
+# Parse options in $@ according to template.
+#
+# Template must contain space separated specification of options:
+#   h:--NAME  h:NAME    --NAME or -NAME will show usage and return 0
+#   H:--NAME  H:NAME    --NAME or -NAME will show usage and return 1
+#   --NAME=V  -NAME=V   op_NAME is set with the last occurence of V
+#                       op_NAMEs array is set with all occurences of V
+#   --NAME    -NAME     op_NAME is set to true or false (or left unchanged)
+#   NAME                op_NAME will be set with the argument
+#   [NAME]    NAME?     op_NAME will be set with the optional argument
+#   NAME...   NAME+     op_NAMEs array will be set with the arguments
+#   [NAME...] NAME*     op_NAMEs array will be set with the optional arguments
+#
+# opts array will be set with the remaining arguments and DOPSH_PREARGS array
+# will be set with the arguments specified in the template (excluding options)
+#
+# $extra_help will be used when showing usage
 dopsh-parseopt(){
-  local op opname opvar opval helpstatus template=" $1 "
+  local op opname opvar opval helpstatus oplist template=" $1 "
   shift
   opts=()
   for op in $template; do
@@ -414,12 +491,14 @@ dopsh-parseopt(){
         ;;
       *)
         opname=
+        oplist=true
         if _dopsh-opt-isopstr "$template" "$1"; then
           if [[ -z "$opval" ]]; then
             opval="$2"
             shift
           fi
         elif _dopsh-opt-isopbool "$template" "$1"; then
+          oplist=false
           if [[ -z "$opval" ]]; then
             echo "Expected true or false for --$opname" >&2
             dopsh-usage "$template" >&2
@@ -432,8 +511,9 @@ dopsh-parseopt(){
           opts=("${opts[@]}" "$1")
         fi
         if [[ -n "$opname" ]]; then
-          #eval "declare -a op_${opname//-/_}s" # declare -a makes it local
-          eval "op_${opname//-/_}s+=(\"\$opval\")"
+          if $oplist; then
+            eval "op_${opname//-/_}s+=(\"\$opval\")"
+          fi
           eval "op_${opname//-/_}=\"\$opval\""
         fi
         shift
@@ -480,10 +560,13 @@ dopsh-parseopt(){
 }
 
 # usage: [-file] name defaultval [alias...]
+# set op_{name} using the op_{alias} if not empty, or to {defaultval} if no
+# option is set. Specify -file to make the path absolute (make it robust to
+# chdir)
 dopsh-opt(){
   local aliasvar
   local isfile=false
-  if [[ "a$1" == "a-file" ]]; then
+  if [[ "a$1" == "a-file" ]] ||  [[ "a$1" == "a--file" ]]; then
     isfile=true
     shift
   fi
@@ -496,16 +579,6 @@ dopsh-opt(){
   eval ": \${op_${var}:=\"\$val\"}"
   if $isfile; then
     eval "op_${var}=\"\$(abspath \"\$op_$var\" \"\$DOPSH_CALL_DIR\")\""
-  fi
-}
-
-redo-always-stamp(){
-  redo-always
-  local in=${1:-$(abspath "${DOPSH_ARGS[2]}" "$DOPSH_CALL_DIR")}
-  if [ "a$in" = "a-" ]; then
-    redo-stamp
-  else
-    redo-stamp <"$in" 
   fi
 }
 

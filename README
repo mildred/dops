@@ -186,20 +186,17 @@ useful.
 What functions and executables come with the dopsh shell?
 =========================================================
 
-  - `warn [-n]`:
-    `printf` to stdout
+Basic utilities:
 
-  - `fail [-n]`:
-    Terminate
+  - `warn [-n]`:    `printf` to stdout
+  - `fail [-n]`:    `printf` to stderr and return with code 1
+  - `has`:          `which` with no output
+  - `[ef]contains`: `[ef]grep` with no output
+  - `abspath`:      Transform a path to an absolute path
+  - `shquote`:      Quote its argument so it can be read safely from the shell
+  - `not`:          Print true when given false and false when given true
 
-  - `has`:
-    `which` with no output
-
-  - `[ef]contains`:
-    `[ef]grep` with no output
-
-  - `shquote`:
-    quote its argument so it can be read safely from the shell
+Redo extensions:
 
   - `redo-cat[x]`:
     `redo` a file and `cat` it afterwards, `catx` if you don't care about the
@@ -215,28 +212,56 @@ What functions and executables come with the dopsh shell?
     `redo-always` with `redo-stamp` (put this after FILE which defaults to $3
     has been written)
 
-  - `do-record [-q] VAR DEFVAL VAL`
+For shell scripts:
 
-  - `do-recordf [-q] VAR DEFVAL FILE`
+  - `dopsh-init "$0" "$@"`: set `DOPSH_ARG0` and `DOPSH_ARGS`
 
-  - `do-recordc [-q] VAR DEFVAL`
+  - `dopsh-parseopt TEMPLATE "$@"`: parse options according to `TEMPLATE`. It
+    can use `DOPSH_ARG0` and `DOPSH_ARGS` to print help.
+    
+  - `dopsh-opt`: Declare options after `dopsh-parseopt`
 
-  - `do-getconf VAR DEFVAL` is an alias for `do-recordc -q`
+For provisionning scripts:
 
   - `do-provision MODULE1 MODULE2`:
     Equivalent to `redo MODULE1/provision MODULE2/provision`
 
+  - `do-conf [--shell] VAR VALSPEC...`: set the variable `VAR`, optionally
+    printing shell code to set it (if `--shell` is specified). `VALSPEC` is used
+    to determine the variable value, taking the first and going to the last in
+    this order, stopping when the value has been set (not empty).
+    
+    `VALSPEC` can be one of:
+    
+    - `v=VALUE`: set the variable if `VALUE` is not empty
+    - `f=FILE`:  set the variable to the content of `FILE` if it exists
+    - `c=FILE`:  set the variable to the content of `DOPSH_MYCONF/FILE` if it
+       exists
+    - `C=FILE`:  set the variable to the content of `DOPSH_CONF/FILE` if it
+       exists
 
-The source of these functions is in `dopsh_functions.sh`.
+The source of these functions is in `dopsh_functions.sh`. It can contain more
+documentation in the form of comments
+
+There are also deprecated functions:
+
+  - `do-record [-q] VAR DEFVAL VAL`: deprecarted, use `do-conf [--shell] VAR v=VAL v=DEFVAL`
+
+  - `do-recordf [-q] VAR DEFVAL FILE`: deprecarted, use `do-conf [--shell] VAR f=FILE v=DEFVAL`
+
+  - `do-recordc [-q] VAR DEFVAL`: deprecarted, use `do-conf [--shell] VAR c=VAR v=DEFVAL`
+
+  - `do-getconf VAR DEFVAL` is an alias for `do-recordc -q`, please use `do-conf` instead
 
 What tools do I have for provisionning?
 =======================================
 
+These are not implemented as functions but as scripts in the `bin` directory:
+
   - `do-install`:
     Declare wanted files or packages
 
-  - `do-install-file`:
-    Declare wanted files or packages (deprecated by `do-install`)
+  - `do-install-file`: deprecated in favor of `do-install`
 
   - `do-passwd`:
     Declare system users
