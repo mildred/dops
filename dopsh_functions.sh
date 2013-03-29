@@ -208,7 +208,7 @@ do-conf(){
   else
     eval "$op_var=\"\$value\""
     if $op_shell || $op_s; then
-      printf "%s\n" "$1=$(shquote "$value")"
+      printf "%s\n" "$op_var=$(shquote "$value")"
     fi
   fi
 }
