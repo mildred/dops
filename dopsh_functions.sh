@@ -173,17 +173,28 @@ do-conf(){
   local op_v op_vs op_var op_argspecs opts DOPSH_PREARGS
   local op_shell=false op_s=false
   local extra_help="argspec can either be:
-  f=FILE  to take the argument from the given file
   v=VALUE to use the value if not empty
-  c=FILE  to search for a  file in DOPS_MYCONF
-  C=FILE  to search for a  file in DOPS_CONF"
+  f=FILE  to take the argument from the given file
+  c=FILE  to search for a file in DOPS_MYCONF
+  C=FILE  to search for a file in DOPS_CONF
+  bf=FILE will set the value to true if the FILE exists
+  bc=FILE will set the value to true if the FILE exists in DOPS_MYCONF
+  bC=FILE will set the value to true if the FILE exists in DOPS_CONF"
   dopsh-parseopt "H:help --shell -s var [argspec...]" "$@" || return 1
-  local argspec specf specv specc speccc value=
+  local argspec specf specv specc speccc specbf specbc specbcc boolval value=
   for argspec in "${op_argspecs[@]}"; do
     specf="${argspec#f=}"
     specv="${argspec#v=}"
     specc="${argspec#c=}"
     speccc="${argspec#C=}"
+    specbf="${argspec#[Bb]f=}"
+    specbc="${argspec#[Bb]c=}"
+    specbcc="${argspec#[Bb]C=}"
+    if [ "a$argspec" != "a${argspec#b}" ]; then
+      boolval=true
+    elif [ "a$argspec" != "a${argspec#B}" ]; then
+      boolval=false
+    fi
     if [ "a$argspec" != "a$specv" ]; then
       : ${value:="$specv"}
     elif [ "a$argspec" != "a$specf" ]; then
@@ -197,6 +208,18 @@ do-conf(){
     elif [ "a$argspec" != "a$speccc" ]; then
       if [ -z "$value" ]; then
         value="$(redo-catx "$DOPS_CONF/$speccc")"
+      fi
+    elif [ "a$argspec" != "a$specbf" ]; then
+      if [ -z "$value" ] && [ -e "$specbf" ]; then
+        value="$boolval"
+      fi
+    elif [ "a$argspec" != "a$specbc" ]; then
+      if [ -z "$value" ] && [ -e "${DOPS_MYCONF:-"$DOPS_CONF/$(basename "$PWD")"}/$specbc" ]; then
+        value="$boolval"
+      fi
+    elif [ "a$argspec" != "a$specbcc" ]; then
+      if [ -z "$value" ] && [ -e "$DOPS_CONF/$specbcc" ]; then
+        value="$boolval"
       fi
     else
       fail "invalid argspec: $argspec"

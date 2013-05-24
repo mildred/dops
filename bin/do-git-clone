@@ -6,7 +6,11 @@
 . "$DOPS_DIR/dopsh_functions.sh"
 
 dopsh-init "$0" "$@"
-dopsh-parseopt "H:help -b= --branch=branch -k= --key=sshkey -s= --stamp=stampfile -u= --user= --fail-unchanged url [dir]" "$@" || exit 1
+extra_help="--fail-unchanged makes go-git-clone return status 1 on unchanged repository
+--fail-unchanged-if=OKFILE makes do-git-clone:
+   - exit with status 1 if unchanged and OKFILE is there
+   - or else, update repository, remove OKFILE and return status 0"
+dopsh-parseopt "H:help -b= --branch=branch -k= --key=sshkey -s= --stamp=stampfile -u= --user= --fail-unchanged --fail-unchanged-if=okfile url [dir]" "$@" || exit 1
 
 dopsh-opt       branch         HEAD  b
 dopsh-opt       fail_unchanged false
@@ -49,6 +53,10 @@ wrapgit(){
   "${wrapgitop[@]}" git "$@"
 }
 
+if [ -n "$op_fail_unchanged_if" ] && [ -e "$op_fail_unchanged_if" ]; then
+  op_fail_unchanged=true
+fi
+
 [ 1 = "$REDO_XTRACE" ] && set -x
 set -e
 
@@ -75,6 +83,10 @@ fi
 
 if [ -n "$op_stamp" ]; then
   git rev-parse HEAD >"$op_stamp"
+fi
+
+if [ -n "$op_fail_unchanged_if" ] && [ $exitcode -eq 0 ]; then
+  rm -f "$op_fail_unchanged_if"
 fi
 
 exit $exitcode

@@ -239,6 +239,12 @@ For provisionning scripts:
        exists
     - `C=FILE`:  set the variable to the content of `DOPSH_CONF/FILE` if it
        exists
+    - `bf=FILE`: set the variable to `true` if `FILE` exists
+    - `bc=FILE`: set the variable to `true` if `DOPSH_MYCONF/FILE` exists
+    - `bC=FILE`: set the variable to `true` if `DOPSH_CONF/FILE` exists
+    - `Bf=FILE`: set the variable to `false` if `FILE` exists
+    - `Bc=FILE`: set the variable to `false` if `DOPSH_MYCONF/FILE` exists
+    - `BC=FILE`: set the variable to `false` if `DOPSH_CONF/FILE` exists
 
 The source of these functions is in `dopsh_functions.sh`. It can contain more
 documentation in the form of comments
